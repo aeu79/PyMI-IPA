@@ -6,14 +6,14 @@ This repository contains a Python version of the Matlab MI-IPA implementation ([
 Is the main program. Julie is porting this to Python.
 
 ### Input
-- Standard_HKRR_dataset.fasta
+#### Standard_HKRR_dataset.fasta
 MSA in fasta format (5109 random pairs). Names look like this:
 >Halhy_2679_HK_Classic|Haliscomenobacter_hydrossis_DSM_1100|Pair_Halhy_2678|HisKA_202-269/Halhy_2678_RR_unclassified|Haliscomenobacter_hydrossis_DSM_1100|Pair_Halhy_2679|Response_reg_6-118
 >Halhy_3192_HK_Classic|Haliscomenobacter_hydrossis_DSM_1100|Pair_Halhy_3191|HisKA_204-270/Halhy_3191_RR_OmpR|Haliscomenobacter_hydrossis_DSM_1100|Pair_Halhy_3192|Response_reg_5-115
 
 We should somehow input the info about the length of each sequence pair in the alignment (Probably best if given as an argument).
 
-- SpeciesNumbering_Standard_HKRR_dataset.mat
+#### SpeciesNumbering_Standard_HKRR_dataset.mat
 
 Sp. Index | Sp. name
 ------------ | -------------
@@ -28,7 +28,7 @@ Sp. Index | Sp. name
 **502** Species in total. Made a .csv version for us.
 
 ### Output (from MatLab, see results.zip)
-1. IniScrambling_Ninc1600_rep1.txt
+#### IniScrambling_Ninc1600_rep1.txt
 
 Sp. Index | Seq nº | Sp. Index | Seq nº
 ------------ | ------------- | ------------- | -------------
@@ -42,7 +42,7 @@ Sp. Index | Seq nº | Sp. Index | Seq nº
 
 Probably random pairs (5064), not final result.
 
-1. Resf_Ninc1600_rep1.txt
+#### Resf_Ninc1600_rep1.txt
 
 Sp. Index | Seq nº | Seq nº | Score x? | Score x?
 ------------ | ------------- | ------------- | ------------- | -------------
@@ -62,7 +62,7 @@ Yes, are the results  (MI_IPA_main.m: lines 102-104):
 >%save the final pairs made and their scores
 
 
-1. TP_data_Ninc1600_rep1.txt
+#### TP_data_Ninc1600_rep1.txt
 
 Nº of pairs? | ? | ? | ? | ? | ?
 ------------ | ------------- | ------------- | ------------- | ------------- | -------------
