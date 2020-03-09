@@ -23,6 +23,7 @@ def main():
     encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr)
     table_count_species = count_species(encoded_focus_alignment)
 
+    encoded_focus_alignment, encoded_focus_alignment_headers = SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_headers)
 
 
 
@@ -94,8 +95,8 @@ def count_species(encoded_focus_alignment):
     '''
     return a table with species id, 1st index in encoded_focus_alignment, last index in encoded_focus_alignment
     :param
-    encoded_focus_alignment:
-    :return:
+    encoded_focus_alignment: multiple sequence alignment
+    :return: a table contains index start & end points for each species.
     '''
 
     (N, alignment_width) = encoded_focus_alignment.shape
@@ -130,9 +131,38 @@ def count_species(encoded_focus_alignment):
     return table_count_species
 
 
+def SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_headers):
+    '''
+    produce alignment where the species with only one pair are suppressed.
+    :param encoded_focus_alignment: multiple sequence alignment
+    :param encoded_focus_alignment_headers: sequence header (species info)
+    :return: sequence alignments & header info after removing species with only one protein.
+    '''
 
-table_count_species = count_species(encoded_focus_alignment)
+    # according to readAlignment_and_NumberSpecies function, the second last column is for speicies ID.
+    # colval: the value in the species ID
+    # count : how many proteins in this species
+    # to do : remove species within one protein from the alignment
 
+    colval , count = np.unique(encoded_focus_alignment[:, -2], return_counts=True)
+    colval = colval.astype(int)
+
+    #col stores speciesID which has only one protein
+    col=[]
+    for speciesID, occu in dict(zip(colval, count)).items():
+        if occu == 1:
+            col.append(speciesID)
+
+    #delete the first sequence  and last dummy...?(she defined it!)
+    del col[0]
+    del col[-1]
+
+    NUP_alignment = encoded_focus_alignment
+    mask = ~np.isin(NUP_alignment[:,-2],col)
+    NUP_alignment = NUP_alignment[mask,:]
+    NUP_alignment_headers = np.array(encoded_focus_alignment_headers)[mask].tolist()
+
+    return NUP_alignment, NUP_alignment_headers
 
 if __name__ == "__main__":
     main()
