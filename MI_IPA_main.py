@@ -4,6 +4,7 @@ import scipy.io as spio
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 import pandas as pd
 import numpy as np
+import math
 
 
 ### glob parameters
@@ -20,11 +21,25 @@ SpeciesNumbering_extr = pd.DataFrame([*zip(col1,col2)])
 
 
 def main():
+    
+    # read sequences, adding species number in L+1 and sequence number in L+2
+    # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
+
     encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr)
     table_count_species = count_species(encoded_focus_alignment)
 
+    # suppress species with one pair
     encoded_focus_alignment, encoded_focus_alignment_headers = SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_headers)
+    # tabulate species and sequences within species
+    table_count_species = count_species(encoded_focus_alignment)
 
+    #number of sequences
+    N = encoded_focus_alignment.shape[0]
+    print(N)
+
+    # number of rouns(last one -> all sequences are in the training set)
+    Nrounds = math.ceil(encoded_focus_alignment.shape[0]/Nincrement + 1)
+    print(Nrounds)
 
 
 
