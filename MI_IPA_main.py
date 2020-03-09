@@ -21,7 +21,7 @@ SpeciesNumbering_extr = pd.DataFrame([*zip(col1,col2)])
 
 def main():
     encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr)
-
+    table_count_species = count_species(encoded_focus_alignment)
 
 
 
@@ -90,9 +90,52 @@ def readAlignment_and_NumberSpecies(msa_fasta_filename,SpeciesNumbering_extr):
     encoded_focus_alignment = np.delete(encoded_focus_alignment, np.where(~encoded_focus_alignment.any(axis=1)), axis=0)
     return encoded_focus_alignment, encoded_focus_alignment_headers,alignment_width
 
+def count_species(encoded_focus_alignment):
+    '''
+    return a table with species id, 1st index in encoded_focus_alignment, last index in encoded_focus_alignment
+    :param
+    encoded_focus_alignment:
+    :return:
+    '''
+
+    (N, alignment_width) = encoded_focus_alignment.shape
+    L = alignment_width - 2
+
+    table_count_species = np.zeros((N, 3))
+    #print(table_count_species.shape)
+    species_id = encoded_focus_alignment[1, L]
+    iini = 1
+    count = -1
+    for i in range(1, N-1):
+        species_id_prev = species_id
+        species_id = encoded_focus_alignment[i, L]
+
+        if species_id != species_id_prev:
+            count = count + 1
+            ifin = i - 1
+
+            table_count_species[count, 0] = species_id_prev
+            table_count_species[count, 1] = iini
+            table_count_species[count, 2] = ifin
+            iini = i
+
+    count = count + 1
+    ifin = N - 1
+    table_count_species[count, 0] = species_id
+    table_count_species[count, 1] = iini
+    table_count_species[count, 2] = ifin - 1
+
+    table_count_species = np.delete(table_count_species, np.where(~table_count_species.any(axis=1)), axis=0)
+
+    return table_count_species
 
 
 
+table_count_species = count_species(encoded_focus_alignment)
+
+
+if __name__ == "__main__":
+    main()
 
 
 
