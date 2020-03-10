@@ -26,8 +26,7 @@ def main():
     # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
 
     encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr)
-    table_count_species = count_species(encoded_focus_alignment)
-
+    
     # suppress species with one pair
     encoded_focus_alignment, encoded_focus_alignment_headers = SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_headers)
     # tabulate species and sequences within species
@@ -40,6 +39,9 @@ def main():
     # number of rouns(last one -> all sequences are in the training set)
     Nrounds = math.ceil(encoded_focus_alignment.shape[0]/Nincrement + 1)
     print(Nrounds)
+
+    #start from random within-speicies pairings: scrable the pairings for this. 
+    encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
 
 
 
@@ -178,6 +180,45 @@ def SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_
     NUP_alignment_headers = np.array(encoded_focus_alignment_headers)[mask].tolist()
 
     return NUP_alignment, NUP_alignment_headers
+
+def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
+    '''
+    scramble the pairs.
+    :param encoded_focus_alignment: multiple sequence alignment
+    :param LengthA: length of first protein of the pair.
+    :param table_count_species: tabulate species and sequences within species
+    :return: scrambled multiple sequence alignment.
+    '''
+    N, alignment_width = encoded_focus_alignment.shape
+    L = alignment_width - 2   #last 2 cols contain species index and initial sequence index!
+
+    # added columns will contain the same data but for the RR
+    scrambled_alignment = np.zeros((N,L+4))
+
+    # loop over species
+    for i in range(len(table_count_species)):
+        # number of sequences in this species
+        Nseqs = int(table_count_species[i,2] -table_count_species[i,1] + 1)
+        #random permutation
+        thePerm = np.arange(Nseqs)
+        np.random.shuffle(thePerm)
+
+        for j in range(Nseqs):
+
+            HKIndex = int(table_count_species[i, 1] + j)
+            RRIndex = int(table_count_species[i, 1] + thePerm[j])
+            scrambled_alignment[HKIndex, :LengthA] = encoded_focus_alignment[HKIndex, :LengthA]
+            scrambled_alignment[HKIndex, LengthA :L] = encoded_focus_alignment[RRIndex, LengthA :L]
+            scrambled_alignment[HKIndex, L :L + 2] = encoded_focus_alignment[HKIndex, L :L + 2]
+            scrambled_alignment[HKIndex, L + 2:L + 4] = encoded_focus_alignment[RRIndex, L :L + 2]
+
+    scrambled_alignment = np.delete(scrambled_alignment, np.where(~scrambled_alignment.any(axis=1)), axis=0)
+    return scrambled_alignment
+
+
+
+
+
 
 if __name__ == "__main__":
     main()
