@@ -6,11 +6,12 @@ def Compute_PMIs(encoded_focus_alignment, pseudocount_weight, theta):
     q= 21
 #compute the empirical frequencies from the sequence data
     Meff, Pij_true, Pi_true, alignment_width = count_alignment(encoded_focus_alignment, theta, q)
+    print(Meff)
 #include pseudocounts
     Pij,Pi= with_pc(Pij_true, Pi_true, pseudocount_weight, alignment_width, q)
 #compute PMIs
     PMIs = Get_PMIs(Pij, Pi, alignment_width, q)
-    np.save('PMIs_file.npy',PMIs)
+    np.save('PMIsssfile.npy',PMIs)
     return(PMIs, Meff)
 
 
@@ -19,7 +20,7 @@ def count_alignment(encoded_focus_alignment, theta, q):
 #calculate Meff
     alignment_height = encoded_focus_alignment.shape[0]
     alignment_width = encoded_focus_alignment.shape[1]
-    W = np.ones((1, alignment_height)))
+    W = np.ones((1, alignment_height))
 #whether you weight or not
     if theta > 0.0:
         encoded_focus_alignment_pdist=scispa.distance.pdist(encoded_focus_alignment,'hamming')
