@@ -34,16 +34,17 @@ def main():
 
     #number of sequences
     N = encoded_focus_alignment.shape[0]
-    print(N)
+#    print(N)
 
     # number of rouns(last one -> all sequences are in the training set)
     Nrounds = math.ceil(encoded_focus_alignment.shape[0]/Nincrement + 1)
-    print(Nrounds)
+#    print(Nrounds)
 
     #start from random within-speicies pairings: scrable the pairings for this. 
     encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
-
-
+    encoded_training_alignment = np.delete(encoded_training_alignment,[ L , L + 1 , L + 2 , L + 3 ],axis = 1)
+    print(encoded_training_alignment.shape)
+ #   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
 
 
 
@@ -217,6 +218,44 @@ def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
 
 
 
+
+def Compute_pairing_scores(test_seqs,Nseqs,PMIs, LengthA, L):
+    '''
+    calculate PMI-based pairing scores between all pairs of HKs and RRs in test_seqs
+    Line: HK; Col: RR.
+    :param test_seqs: seqs within one species.
+    :param NSeqs: number of sequences in this species.
+    :param PMIs: previously-generated
+    :param LengthA: length of 1st protein in the pair.
+    :param L: length of two proteins.
+    :return: pairing score.
+    '''
+
+    Pairing_scores = np.zeros((Nseqs, Nseqs))
+
+    ## index coombination of two individual proteins: a[0,63] b[64,175]
+    ## k,l appear in pairs: [0,64],[0,65],[0,66]...[63,175]
+    indlst = []
+    for k,l in list(product(list(range(LengthA)),list(range(LengthA,L)))):
+        indlst.append([k,l])
+
+    ## length of a_lst/b_lst : 64*112=7168
+    a_lst = [x[0] for x in indlst]   # element in a_lst: position in protein A (from 0 to 63)
+    b_lst = [x[1] for x in indlst]   # element in b_lst: position in protein B (from 64 to 175)
+
+
+    ## fill in Pairing_scores matrix
+    for index in np.ndindex(Pairing_scores.shape):
+        aa1_lst = test_seqs[index[0],a_lst]
+        aa2_lst = test_seqs[index[1],b_lst]
+
+        ## -1 : aa1_lst.max is 21.0 and need to be 20 and integer.
+        aa1_lst = map(lambda x: int(x)- 1 , aa1_lst)
+        aa2_lst = map(lambda x: int(x)- 1 , aa2_lst)
+
+        Pairing_scores[index] = PMIs[a_lst, b_lst, aa1_lst, aa2_lst].sum()
+
+    return Pairing_scores
 
 
 
