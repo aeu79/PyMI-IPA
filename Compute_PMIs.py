@@ -11,7 +11,7 @@ def Compute_PMIs(encoded_focus_alignment, pseudocount_weight, theta):
     Pij,Pi= with_pc(Pij_true, Pi_true, pseudocount_weight, alignment_width, q)
 #compute PMIs
     PMIs = Get_PMIs(Pij, Pi, alignment_width, q)
-    np.save('PMIsssfile.npy',PMIs)
+    np.save('PMIsfile.npy',PMIs)
     return(PMIs, Meff)
 
 
