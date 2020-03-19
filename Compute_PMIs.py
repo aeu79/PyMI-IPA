@@ -101,3 +101,4 @@ if __name__ == "__main__":
     theta=0.15
 #    Compute_PMIs(fi, pseudocount_weight, theta)
     cProfile.run('Compute_PMIs(fi, pseudocount_weight, theta)')
+    # test result with: md5sum -c <<<"334f52956fd41216609b0223f5caf8c9 *PMIsfile.npy"
