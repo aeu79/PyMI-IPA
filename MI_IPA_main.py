@@ -225,6 +225,89 @@ def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
     scrambled_alignment = np.delete(scrambled_alignment, np.where(~scrambled_alignment.any(axis=1)), axis=0)
     return scrambled_alignment
 
+def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
+    '''
+    makes pairing predictions on encoded_focus_alignment using PMI scores.
+    :param encoded_focus_alignment:
+    :param PMIs:
+    :param LengthA: length of the first protein in the pair.
+    :param table_count_species:
+    :return:
+    '''
+
+    N, alignment_width = encoded_focus_alignment.shape
+    L = alignment_width - 2
+
+    # initialize the Results array, used for saving data
+    # col 1: species
+    # col 2: HK index in initial alignment
+    # col 3: RR index in initial alignment
+    # col 4: score of pairing
+    # col 5: gap
+    Results = np.zeros((5, N-2)) #need to transform to get the same format as matlab version.
+    # total pair counter
+    pre_tol = 0
+    cur_tol = 0
+
+    for i in range(table_count_species.shape[0]):
+        test_seqs = encoded_focus_alignment[int(table_count_species[i, 1]):int(table_count_species[i, 2])+1,:]
+        Nseqs = int(table_count_species[i, 2]) - int(table_count_species[i, 1]) + 1
+        species_id = int(table_count_species[i, 0])
+
+        #now compute the PMI-based pairing score of all the HK-RR pairs within the species corresponding to i
+        Pairing_scores = Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L)
+
+        if Nseqs == 1 :
+            assignment = 1
+            Pairing_scores_b = Pairing_scores - Pairing_scores.min() # ensure that all elements are >= 0
+
+        elif Pairing_scores.min() == Pairing_scores.max():
+
+            # random permutation
+            thePerm = np.arange(Nseqs)
+            np.random.shuffle(thePerm) # avoid spurious positive results
+            Pairing_scores_b = Pairing_scores - Pairing_scores.min()
+
+        else:
+            # use the Hungarian algorithm
+            Pairing_scores_b = Pairing_scores - Pairing_scores.min()
+            assignment, score = assignmentoptimal(Pairing_scores_b.tolist()) # input requires list not np.array
+            # deal with identical rows, i.e.effectively identical HKs
+            uEn = np.unique(Pairing_scores_b, axis=0)
+            if uEn.shape[0] != Pairing_scores_b.shape[0]:
+
+                assignment = randomize_equal(assignment, Pairing_scores_b, uEn,'row')
+
+            uEn = np.unique(Pairing_scores_b, axis=1)
+            if uEn.shape[1] != Pairing_scores_b.shape[1]:
+                assignment = randomize_equal(assignment, Pairing_scores_b, uEn,'col')
+
+        bigval = 1e3 * Pairing_scores_b.max()
+
+
+        cur_tol = pre_tol + Nseqs
+        #print(i)
+        Results[:-1, pre_tol:cur_tol] = np.array([np.repeat(species_id, Nseqs),test_seqs[:,L+1],test_seqs[assignment,L+1],
+                                                  Pairing_scores[np.arange(Nseqs),assignment]])
+
+        if Nseqs == 1:
+            Results[4, pre_tol:cur_tol] = abs(Pairing_scores)
+
+        elif Pairing_scores.min() == Pairing_scores.max():
+            Results[4,pre_tol:cur_tol] = 0
+
+        else:
+            for j in range(Nseqs):
+                Pairing_scores_mod = np.copy(Pairing_scores_b)
+                Pairing_scores_mod[j, assignment[j]] = bigval
+                useless, score_mod = assignmentoptimal(Pairing_scores_mod.tolist())
+                Results[4,pre_tol+j] = score_mod - score
+
+        pre_tol = cur_tol
+
+    return Results.T
+
+
 def Compute_pairing_scores(test_seqs,Nseqs,PMIs, LengthA, L):
     '''
     calculate PMI-based pairing scores between all pairs of HKs and RRs in test_seqs
@@ -262,6 +345,59 @@ def Compute_pairing_scores(test_seqs,Nseqs,PMIs, LengthA, L):
         Pairing_scores[index] = PMIs[a_lst, b_lst, aa1_lst, aa2_lst].sum()
 
     return Pairing_scores
+
+def assignmentoptimal(distMatrix):
+    '''
+    Compute optimal assignment by Munkres algorithm
+    ASSIGNMENTOPTIMAL(DISTMATRIX) computes the optimal assignment (minimum
+    overall costs) for the given rectangular distance or cost matrix, for
+    example the assignment of tracks (in rows) to observations (in
+    columns). The result is a column vector containing the assigned column
+    number in each row (or 0 if no assignment could be done).
+
+    [ASSIGNMENT, COST] = ASSIGNMENTOPTIMAL(DISTMATRIX) returns the
+    assignment vector and the overall cost.
+
+    Here we use a python package for Hungarian Algorithm(https://github.com/bmc/munkres).
+
+    :param distMatrix: a cost matrix but in list format(Note: this package does not support numpy array!))
+    :return:assignment vector(np.array), minimum cost.
+    '''
+
+    m = Munkres()
+    indexes = m.compute(distMatrix)
+    assignment = np.array([x[1] for x in indexes])
+    cost = 0
+    for row, column in indexes:
+        value = distMatrix[row][column]
+        cost += value
+
+    return assignment, cost
+
+
+def randomize_equal(assignment,HKRR_energy_b,uEn,vec):
+    '''
+    deal with identical columns, i.e. effectively identical RRs
+    :param assignment: assignment vector from Hungarian algorithm
+    :param HKRR_energy_b: Pairing_scores_b where all elements are positive.
+    :param uEn: Pairing_scores_b after applying unique rows or columns
+    :param vec: argument of rows or columns.
+    :return: a random permutation of these repeated vectors in assignment
+    '''
+
+    if vec == 'col':
+        uEn = uEn.T
+        HKRR_energy_b = HKRR_energy_b.T
+
+    for i in range(uEn.shape[0]):
+        rows = np.where((uEn[i] == HKRR_energy_b).all(axis=1))
+        if len(rows[0]) > 1:
+           thePerm = np.arange(len(rows[0]))
+           np.random.shuffle(thePerm)
+         #  print(thePerm)
+           assignment[rows] = assignment[rows[0][thePerm]]
+
+    return assignment
 
 
 
