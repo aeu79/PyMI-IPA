@@ -5,6 +5,7 @@ from Bio.SeqIO.FastaIO import SimpleFastaParser
 import pandas as pd
 import numpy as np
 import math
+from itertools import product
 from munkres import Munkres
 from Irene import Compute_PMIs
 import time
@@ -43,31 +44,82 @@ def main():
 
     #number of sequences
     N = encoded_focus_alignment.shape[0]
-#    print(N)
+    print(N)
 
     # number of rouns(last one -> all sequences are in the training set)
     Nrounds = math.ceil(encoded_focus_alignment.shape[0]/Nincrement + 1)
-#    print(Nrounds)
+    print(Nrounds)
 
     #start from random within-speicies pairings: scrable the pairings for this. 
     encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
+    
+    ##save the species and initial indices of the sequences in the scrambled alignment we start from
+    filename='Res_python/IniScrambling_Ninc'+ str(Nincrement) + '_rep' + str(replicate) +'.txt'
+    np.savetxt(filename,encoded_training_alignment[:,L:].astype(int),delimiter='\t')
     encoded_training_alignment = np.delete(encoded_training_alignment,[ L , L + 1 , L + 2 , L + 3 ],axis = 1)
-    print(encoded_training_alignment.shape)
- #   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
+#    print(encoded_training_alignment.shape)
+#   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
+    Nrounds=1
+
+   #initialize
+    NSeqs_new = 0
+    Output = np.zeros((Nrounds, 6)).astype(object)
+
+    #iterate
+    for rounds in range(Nrounds):
+
+        print(rounds)
+
+        if rounds > 0:
+            # Use the gap to rank pairs
+            Results = Results[Results[:, -1].argsort()[::-1]]
+
+            #number of sequences that will be added to form the training set for this round
+            NSeqs_new = NSeqs_new + Nincrement
+            if NSeqs_new >= Results.shape[0]:
+                NSeqs_new = Results.shape[0] # for the last round, all paired sequences will be in the training set
+
+            #save to Output the number of TP or FP in the training set
+            Output[rounds, 4] = np.count_nonzero(Results[:NSeqs_new,1]==Results[:NSeqs_new,2])
+            Output[rounds, 5] = np.count_nonzero(Results[:NSeqs_new,1]==Results[:NSeqs_new,2])
+
+            #construct new training set
+            newseqs = np.zeros((NSeqs_new, L))
+
+            sorted_lst1 = np.searchsorted(encoded_focus_alignment[:,L+1],Results[:NSeqs_new,1])
+            sorted_lst2 = np.searchsorted(encoded_focus_alignment[:,L+1],Results[:NSeqs_new,2])
+
+            newseqs[:,:LengthA] = encoded_focus_alignment[sorted_lst1, :LengthA]
+            newseqs[:,LengthA:L] = encoded_focus_alignment[sorted_lst2, LengthA:L]
+
+            encoded_training_alignment = newseqs
 
 
 
+        PMIs, Meff = Compute_PMIs(encoded_training_alignment, 0.15, 0.15)
 
+        #compute pairings and gap scores for all pairs
+        Results = Predict_pairs(encoded_focus_alignment, -PMIs, LengthA, table_count_species)
+        Output[rounds, 0] = NSeqs_new
+        Output[rounds, 1] = Meff
+        Output[rounds, 2] = np.count_nonzero(Results[:,1]==Results[:,2])
+        Output[rounds, 3] = np.count_nonzero(Results[:,1]!=Results[:,2])
+    
+  #  ##set the decimal precision and change some columns to integer
+  #  Results = np.around(Results, decimals=2)
+  #  Output = np.around(Output, decimals=2)
 
+  #  Results[:,3] = Results [:,3].astype(int)
+  #  Output[:,np.r_[0,2,3,4,5]] = Output[:,np.r_[0,2,3,4,5]].astype(int)
 
+    filename = 'Res_python/TP_data_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
+    np.savetxt(filename, Output, delimiter='\t')
 
+    filename = 'Res_python/Resf_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
+    np.savetxt(filename,Results,delimiter='\t')
 
-
-
-
-
-
-
+    elapsed = (time.time() - start)
+    print(str(timedelta(seconds=elapsed)))
 
 
 def readAlignment_and_NumberSpecies(msa_fasta_filename,SpeciesNumbering_extr):
@@ -244,7 +296,7 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     # col 3: RR index in initial alignment
     # col 4: score of pairing
     # col 5: gap
-    Results = np.zeros((5, N-2)) #need to transform to get the same format as matlab version.
+    Results = np.zeros((5, N-2)).astype(object)  #need to transform to get the same format as matlab version.
     # total pair counter
     pre_tol = 0
     cur_tol = 0
