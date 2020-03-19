@@ -55,15 +55,14 @@ def main():
     
     ##save the species and initial indices of the sequences in the scrambled alignment we start from
     filename='Res_python/IniScrambling_Ninc'+ str(Nincrement) + '_rep' + str(replicate) +'.txt'
-    np.savetxt(filename,encoded_training_alignment[:,L:].astype(int),delimiter='\t')
+    np.savetxt(filename,encoded_training_alignment[:,L:],fmt='%d',delimiter='\t')
     encoded_training_alignment = np.delete(encoded_training_alignment,[ L , L + 1 , L + 2 , L + 3 ],axis = 1)
 #    print(encoded_training_alignment.shape)
 #   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
-    Nrounds=1
 
    #initialize
     NSeqs_new = 0
-    Output = np.zeros((Nrounds, 6)).astype(object)
+    Output = np.zeros((Nrounds, 6))
 
     #iterate
     for rounds in range(Nrounds):
@@ -81,7 +80,7 @@ def main():
 
             #save to Output the number of TP or FP in the training set
             Output[rounds, 4] = np.count_nonzero(Results[:NSeqs_new,1]==Results[:NSeqs_new,2])
-            Output[rounds, 5] = np.count_nonzero(Results[:NSeqs_new,1]==Results[:NSeqs_new,2])
+            Output[rounds, 5] = np.count_nonzero(Results[:NSeqs_new,1]!=Results[:NSeqs_new,2])
 
             #construct new training set
             newseqs = np.zeros((NSeqs_new, L))
@@ -105,18 +104,12 @@ def main():
         Output[rounds, 2] = np.count_nonzero(Results[:,1]==Results[:,2])
         Output[rounds, 3] = np.count_nonzero(Results[:,1]!=Results[:,2])
     
-  #  ##set the decimal precision and change some columns to integer
-  #  Results = np.around(Results, decimals=2)
-  #  Output = np.around(Output, decimals=2)
-
-  #  Results[:,3] = Results [:,3].astype(int)
-  #  Output[:,np.r_[0,2,3,4,5]] = Output[:,np.r_[0,2,3,4,5]].astype(int)
 
     filename = 'Res_python/TP_data_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
-    np.savetxt(filename, Output, delimiter='\t')
+    np.savetxt(filename, Output,fmt=['%d','%1.3f','%d','%d','%d','%d'], delimiter='\t')
 
     filename = 'Res_python/Resf_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
-    np.savetxt(filename,Results,delimiter='\t')
+    np.savetxt(filename,Results,fmt=['%d','%d','%d','%1.3f','%1.3f'], delimiter='\t')
 
     elapsed = (time.time() - start)
     print(str(timedelta(seconds=elapsed)))
