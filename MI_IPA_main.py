@@ -5,7 +5,16 @@ from Bio.SeqIO.FastaIO import SimpleFastaParser
 import pandas as pd
 import numpy as np
 import math
+from munkres import Munkres
+from Irene import Compute_PMIs
+import time
+from datetime import timedelta
 
+#start timer
+start = time.time()
+
+#setting
+np.set_printoptions(suppress=True)
 
 ### glob parameters
 replicate=1
@@ -216,9 +225,6 @@ def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
     scrambled_alignment = np.delete(scrambled_alignment, np.where(~scrambled_alignment.any(axis=1)), axis=0)
     return scrambled_alignment
 
-
-
-
 def Compute_pairing_scores(test_seqs,Nseqs,PMIs, LengthA, L):
     '''
     calculate PMI-based pairing scores between all pairs of HKs and RRs in test_seqs
@@ -250,8 +256,8 @@ def Compute_pairing_scores(test_seqs,Nseqs,PMIs, LengthA, L):
         aa2_lst = test_seqs[index[1],b_lst]
 
         ## -1 : aa1_lst.max is 21.0 and need to be 20 and integer.
-        aa1_lst = map(lambda x: int(x)- 1 , aa1_lst)
-        aa2_lst = map(lambda x: int(x)- 1 , aa2_lst)
+        aa1_lst = [int(x)-1 for x in aa1_lst]
+        aa2_lst = [int(x)-1 for x in aa2_lst]
 
         Pairing_scores[index] = PMIs[a_lst, b_lst, aa1_lst, aa2_lst].sum()
 
