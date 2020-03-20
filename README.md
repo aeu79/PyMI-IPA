@@ -6,7 +6,6 @@ This repository contains a Python version of the Matlab MI-IPA implementation ([
 <!--ts-->
    * [PyMI-IPA](#pymi-ipa)
       * [What we know so far](#what-we-know-so-far)
-         * [Code](#code)
          * [Input](#input)
             * [Standard_HKRR_dataset.fasta](#standard_hkrr_datasetfasta)
             * [SpeciesNumbering_Standard_HKRR_dataset.mat](#speciesnumbering_standard_hkrr_datasetmat)
@@ -18,22 +17,18 @@ This repository contains a Python version of the Matlab MI-IPA implementation ([
          * [Workflow](#workflow)
          * [Setting up your local repository](#setting-up-your-local-repository)
          * [Start coding](#start-coding)
-      * [TODO <g-emoji class="g-emoji" alias="ballot_box_with_check" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/2611.png">☑️</g-emoji> :](#todo-ballot_box_with_check-)
+         * [Dependencies](#dependencies)
 
-<!-- Added by: agu, at: vie mar  6 11:24:22 CET 2020 -->
+<!-- Added by: agu, at: vie mar 20 22:10:10 CET 2020 -->
 
 <!--te-->
 
 ---
 ## What we know so far
-
-### Code
-**MI_IPA_main.m**  
-    Is the main program. Julie is porting this to Python.
-
 ### Input
 #### Standard_HKRR_dataset.fasta
-MSA in fasta format (5109 random pairs). Names look like this:  
+MSA in fasta format (5109 random pairs). First sequence is the reference, last a dummy sequence.
+Names look like this:  
 >\>Halhy_2679_HK_Classic|Haliscomenobacter_hydrossis_DSM_1100|Pair_Halhy_2678|HisKA_202-269/Halhy_2678_RR_unclassified|Haliscomenobacter_hydrossis_DSM_1100|Pair_Halhy_2679|Response_reg_6-118  
 > 
 >\>Halhy_3192_HK_Classic|Haliscomenobacter_hydrossis_DSM_1100|Pair_Halhy_3191|HisKA_204-270/Halhy_3191_RR_OmpR|Haliscomenobacter_hydrossis_DSM_1100|Pair_Halhy_3192|Response_reg_5-115
@@ -101,7 +96,7 @@ Output matrix (MI_IPA_main.m: lines 102-104)
 ---
 ## Contributing
 ### Workflow
-If you're interested in contributing to this project, please follow the following guidelines. Our main branch, where all changes will be gathered, is called **"develop"**. Every "feature" (function) will have its own branch and once is finished, the **"feature_branch"** will be merged to **"develop"**.
+If you're interested in contributing to this project, please follow the following guidelines. Our main branch, where all changes will be gathered, is called **"develop"**. Every "feature" (function) will have its own branch and once is finished, the **"feature_branch"** will be merged to **"develop"**. The branch **"master"** contains the original matlab version. The pending tasks are managed within **Issues**.
 ![alt text](images/Workflow.png "The workflow for this project")  
 
 ### Setting up your local repository
@@ -174,9 +169,14 @@ So:
 git push --set-upstream origin my_new_branch
 ```
 --- 
-## TODO :ballot_box_with_check: :
-- [x]  Create readme for our project
-- [ ]  Translate main script (Julie) @lllovej
-- [ ]  Translate sub-scripts
-- [ ]  Clean (delete) old MatLab code
+### Dependencies
+* numpy
+* scipy
+* biopython
+* pandas
+* munkres  
 
+Install with:
+```bash
+pip3 install numpy scipy biopython pandas munkres
+```
