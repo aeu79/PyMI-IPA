@@ -96,7 +96,7 @@ Output matrix (MI_IPA_main.m: lines 102-104)
 ---
 ## Contributing
 ### Workflow
-If you're interested in contributing to this project, please follow the following guidelines. Our main branch, where all changes will be gathered, is called **"develop"**. Every "feature" (function) will have its own branch and once is finished, the **"feature_branch"** will be merged to **"develop"**. The branch **"master"** contains the original matlab version. The pending tasks are managed within **Issues**.
+If you're interested in contributing to this project, please follow the following guidelines. Our main branch, where all changes will be gathered, is called **"develop"**. Every "feature" (function) will have its own branch and once is finished, the **"feature_branch"** will be merged to **"develop"**. The branch **"matlab"** contains the original matlab version. The pending tasks are managed within **Issues**.
 ![alt text](images/Workflow.png "The workflow for this project")  
 
 ### Setting up your local repository
