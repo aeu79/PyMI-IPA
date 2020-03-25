@@ -135,13 +135,13 @@ def readAlignment_and_NumberSpecies(msa_fasta_filename,SpeciesNumbering_extr):
     encoded_focus_alignment = np.zeros((alignment_height, alignment_width+2))
 
     # encoded the sequence
-    letter2number_map = {'-': 1, 'A': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8, 'I': 9, 'K': 10, 'L': 11,
-                         'M': 12, 'N': 13, 'P': 14, 'Q': 15, 'R': 16, 'S': 17, 'T': 18, 'V': 19, 'W': 20, 'Y': 21,
-                         'B': -1, 'Z': -1, 'J': -1, 'O': -1, 'U': -1, 'X': -1, 'a': -2, 'c': -2, 'd': -2, 'e': -2,
-                         'f': -2, 'g': -2, 'h': -2, 'i': -2, 'k': -2, 'l': -2, 'm': -2, 'n': -2, 'p': -2, 'q': -2,
-                         'r': -2, 's': -2,
-                         't': -2, 'v': -2, 'w': -2, 'y': -2, 'b': -2, 'z': -2, 'j': -2, 'x': -2, 'u': -2, 'o': -2,
-                         '.': -3}
+    letter2number_map = {'-': 0, 'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H':7, 'K': 9, 'L': 10,
+                         'M': 11, 'N': 12, 'P': 13, 'Q': 14, 'R': 15, 'S': 16, 'T': 17, 'V': 18, 'W': 20,
+                         'B': -2, 'Z': -2, 'J': -2, 'O': -2, 'U': -2, 'X': -2, 'a': -3, 'c': -3, 'd': -3, 'e': -3,
+                         'f': -3, 'g': -3, 'h': -3, 'i': -3, 'k': -3, 'l': -3, 'm': -3, 'n': -3, 'p': -3, 'q': -3,
+                         'r': -3, 's': -3,
+                         't': -3, 'v': -3, 'w': -3, 'y': -3, 'b': -3, 'z': -3, 'j': -3, 'x': -3, 'u': -3, 'o': -3,
+                         '.': -4}
 
     for i in range(alignment_height):
         encoded_focus_alignment[i, :-2] = np.array([letter2number_map.get(ch,0) for ch in full_alignment[i]])
@@ -279,7 +279,8 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     :param table_count_species:
     :return:
     '''
-
+    encoded_focus_alignment = encoded_focus_alignment.astype(int)
+    table_count_species = table_count_species.astype(int)
     N, alignment_width = encoded_focus_alignment.shape
     L = alignment_width - 2
 
@@ -295,9 +296,9 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     cur_tol = 0
 
     for i in range(table_count_species.shape[0]):
-        test_seqs = encoded_focus_alignment[int(table_count_species[i, 1]):int(table_count_species[i, 2])+1,:]
-        Nseqs = int(table_count_species[i, 2]) - int(table_count_species[i, 1]) + 1
-        species_id = int(table_count_species[i, 0])
+        test_seqs = encoded_focus_alignment[table_count_species[i, 1]:table_count_species[i, 2]+1,:]
+        Nseqs = table_count_species[i, 2] - table_count_species[i, 1] + 1
+        species_id = table_count_species[i, 0]
 
         #now compute the PMI-based pairing score of all the HK-RR pairs within the species corresponding to i
         Pairing_scores = Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L)
@@ -383,9 +384,9 @@ def Compute_pairing_scores(test_seqs,Nseqs,PMIs, LengthA, L):
         aa1_lst = test_seqs[index[0],a_lst]
         aa2_lst = test_seqs[index[1],b_lst]
 
-        ## -1 : aa1_lst.max is 21.0 and need to be 20 and integer.
-        aa1_lst = [int(x)-1 for x in aa1_lst]
-        aa2_lst = [int(x)-1 for x in aa2_lst]
+        # ## -1 : aa1_lst.max is 21.0 and need to be 20 and integer.
+        # aa1_lst = [int(x)-1 for x in aa1_lst]
+        # aa2_lst = [int(x)-1 for x in aa2_lst]
 
         Pairing_scores[index] = PMIs[a_lst, b_lst, aa1_lst, aa2_lst].sum()
 
