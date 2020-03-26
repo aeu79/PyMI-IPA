@@ -50,7 +50,7 @@ Sp. Index | Sp. name
 **502** Species in total. Made a .csv version for us.
 
 ### Output 
-(from MatLab, see [results.zip](results.zip))
+(from MatLab, see [results.zip](sample_output/results.zip))
 #### IniScrambling_Ninc1600_rep1.txt
 
 Sp. Index | Seq nº | Sp. Index | Seq nº
