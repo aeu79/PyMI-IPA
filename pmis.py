@@ -3,7 +3,7 @@ import scipy.spatial as scispa
 import os,sys, math
 from itertools import product
 import time
-def Compute_PMIs(encoded_focus_alignment, pseudocount_weight, theta):
+def compute_pmis(encoded_focus_alignment, pseudocount_weight, theta):
 
     encoded_focus_alignment = encoded_focus_alignment.astype(int)
 
@@ -134,4 +134,4 @@ if __name__ == "__main__":
     #fi= os.sys.argv[1]
     pseudocount_weight=0.15
     theta=0.15
-    Compute_PMIs(fi, pseudocount_weight, theta)
+    compute_pmis(fi, pseudocount_weight, theta)

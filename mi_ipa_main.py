@@ -1,15 +1,13 @@
-import sys
-import os
-import scipy.io as spio
-from Bio.SeqIO.FastaIO import SimpleFastaParser
-import pandas as pd
-import numpy as np
 import math
-from itertools import product
-from munkres import Munkres
-from Irene import Compute_PMIs
 import time
 from datetime import timedelta
+from itertools import product
+import pmis
+import numpy as np
+import pandas as pd
+import scipy.io as spio
+from Bio.SeqIO.FastaIO import SimpleFastaParser
+from munkres import Munkres
 
 #start timer
 start = time.time()
@@ -44,11 +42,11 @@ def main():
 
     #number of sequences
     N = encoded_focus_alignment.shape[0]
-    print(N)
+    print("Number of sequences: " + str(N))
 
-    # number of rouns(last one -> all sequences are in the training set)
+    # number of runs(last one -> all sequences are in the training set)
     Nrounds = math.ceil(encoded_focus_alignment.shape[0]/Nincrement + 1)
-    print(Nrounds)
+    print("Number of rounds: " + str(Nrounds))
 
     #start from random within-speicies pairings: scrable the pairings for this. 
     encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
@@ -57,7 +55,6 @@ def main():
     filename='Res_python/IniScrambling_Ninc'+ str(Nincrement) + '_rep' + str(replicate) +'.txt'
     np.savetxt(filename,encoded_training_alignment[:,L:],fmt='%d',delimiter='\t')
     encoded_training_alignment = np.delete(encoded_training_alignment,[ L , L + 1 , L + 2 , L + 3 ],axis = 1)
-#    print(encoded_training_alignment.shape)
 #   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
 
    #initialize
@@ -67,7 +64,7 @@ def main():
     #iterate
     for rounds in range(Nrounds):
 
-        print(rounds)
+        print("Round: " + str(rounds +1 ))
 
         if rounds > 0:
             # Use the gap to rank pairs
@@ -95,7 +92,7 @@ def main():
 
 
 
-        PMIs, Meff = Compute_PMIs(encoded_training_alignment, 0.15, 0.15)
+        PMIs, Meff = pmis.compute_pmis(encoded_training_alignment, 0.15, 0.15)
 
         #compute pairings and gap scores for all pairs
         Results = Predict_pairs(encoded_focus_alignment, -PMIs, LengthA, table_count_species)
