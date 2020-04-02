@@ -1,13 +1,13 @@
 import math
-import time
-from datetime import timedelta
 from itertools import product
-import pmis
+
 import numpy as np
 import pandas as pd
 import scipy.io as spio
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from munkres import Munkres
+
+import pmis
 
 # setting
 np.set_printoptions(suppress=True)
@@ -103,8 +103,6 @@ def main():
     filename = 'Res_python/Resf_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
     np.savetxt(filename, Results, fmt=['%d', '%d', '%d', '%1.3f', '%1.3f'], delimiter='\t')
 
-    elapsed = (time.time() - start)
-    print(str(timedelta(seconds=elapsed)))
 
 
 def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):

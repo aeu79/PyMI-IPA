@@ -1,5 +1,4 @@
 import math
-import time
 from itertools import product
 
 import numpy as np
@@ -11,19 +10,12 @@ def compute_pmis(encoded_focus_alignment, pseudocount_weight, theta):
 
     q = 21
     # compute the empirical frequencies from the sequence data
-    time1 = time.time()
     meff, Pij_true, Pi_true, alignment_width = count_alignment(encoded_focus_alignment, theta, q)
-    time2 = time.time()
-    print("count alignment function takes: " + str(time2 - time1))
 
     # include pseudocounts
     Pij, Pi = with_pc(Pij_true, Pi_true, pseudocount_weight, alignment_width, q)
-    time3 = time.time()
-    print("with_pc function takes: " + str(time3 - time2))
     # compute PMIs
     PMIs = Get_PMIs(Pij, Pi, alignment_width, q)
-    time4 = time.time()
-    print("get_PMIs function takes: " + str(time4 - time3))
     # np.save('PMIsssfile.npy',PMIs)
     return PMIs, meff
 
