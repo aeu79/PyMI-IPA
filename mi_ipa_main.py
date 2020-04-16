@@ -15,14 +15,12 @@ np.set_printoptions(suppress=True)
 ### glob parameters
 replicate = 1
 Nincrement = 6
-LengthA = 64
-msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
-mat = spio.loadmat('SpeciesNumbering_Standard_HKRR_dataset.mat', squeeze_me=True)
+LengthA = 613
 
-##from matlab data to df
-col1 = list(range(len(mat['SpeciesNumbering_extr'])))
-col2 = [x[1] for x in mat['SpeciesNumbering_extr']]
-SpeciesNumbering_extr = pd.DataFrame([*zip(col1, col2)])
+## load data
+msa_fasta_filename = 'test_data/test.a3m'
+SpeciesNumbering_extr = pd.read_csv('test_data/tax_lst',header=None,delimiter='\t')
+unique_species_lst=SpeciesNumbering_extr[1].unique().tolist()
 
 
 def main():
@@ -30,11 +28,8 @@ def main():
     # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
 
     encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename,
-                                                                                                  SpeciesNumbering_extr)
+                                                                            SpeciesNumbering_extr,unique_species_lst)
 
-    # suppress species with one pair
-    encoded_focus_alignment, encoded_focus_alignment_headers = SuppressSpeciesWithOnePair(encoded_focus_alignment,
-                                                                                          encoded_focus_alignment_headers)
     # tabulate species and sequences within species
     table_count_species = count_species(encoded_focus_alignment)
 
@@ -105,7 +100,7 @@ def main():
 
 
 
-def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):
+def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr,unique_lst):
     '''
     This assumes that the first sequence is a reference sequence and that the last one is a dummy
     '''
@@ -139,17 +134,16 @@ def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):
         if i == 0:
             encoded_focus_alignment[i, -2] = -1
 
-        if 0 < i < alignment_height - 1:
-            species_id = encoded_focus_alignment_headers[i].split('|')[1]
-            # print(i,species_id)
-            encoded_focus_alignment[i, -2] = SpeciesNumbering_extr.loc[SpeciesNumbering_extr[1] == species_id, 0].iloc[
-                0]
-
-        if i < alignment_height - 1:
-            encoded_focus_alignment[i, -1] = i
         else:
-            encoded_focus_alignment[i, -2] = float("NaN")
-            encoded_focus_alignment[i, -1] = float("NaN")
+            # species_id = encoded_focus_alignment_headers[i].split('|')[1]
+            # # print(i,species_id)
+            # encoded_focus_alignment[i, -2] = SpeciesNumbering_extr.loc[SpeciesNumbering_extr[1] == species_id, 0].iloc[
+            #     0]
+
+            encoded_focus_alignment[i, -2] = unique_lst.index(SpeciesNumbering_extr.iloc[i-1][1])
+
+        encoded_focus_alignment[i, -1] = i
+
 
     encoded_focus_alignment = np.delete(encoded_focus_alignment, np.where(~encoded_focus_alignment.any(axis=1)), axis=0)
     return encoded_focus_alignment, encoded_focus_alignment_headers, alignment_width
