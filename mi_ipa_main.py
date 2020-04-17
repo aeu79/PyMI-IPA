@@ -18,30 +18,7 @@ from munkres import Munkres
 import pmis
 import argparse
 
-parser = argparse.ArgumentParser()
-# Now the parameters:
-# Nincrement
-parser.add_argument("-n", "--Nincrement", type=int, default=6, help="Number of pairs (with the highest confidence scores) to keep from the previous iteration (default = 6).")
-# LengthA = 64
-parser.add_argument("-l", "--Length_first_protein", type=int, default=64, help="The length of the first protein of the pair.")
-# msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
-parser.add_argument("--MSA_file", default="Standard_HKRR_dataset.fasta", help="Path to the multiple sequence alignment (MSA) in fasta format of the concatenated pairs.")
-# Species list
-parser.add_argument("-s", "--species", default="SpeciesNumbering_Standard_HKRR_dataset.mat", help="Species list, currently in matlab format.")
-# Verbosity
-parser.add_argument("-v", "--verbosity", action="store_true", default=0, help="Increase output verbosity (prints variables and rounds).")
 
-# Save the received arguments:
-arguments = parser.parse_args()
-Nincrement = arguments.Nincrement
-LengthA = arguments.Length_first_protein
-msa_fasta_filename = arguments.MSA_file
-species = arguments.species
-if arguments.verbosity:
-    print("The MSA:                 " + msa_fasta_filename)
-    print("The species list:        " + species)
-    print("Length (aa) first prot.: " + str(LengthA)) # TODO: check in the lenght takes into account gaps (it should be column instead of aa)
-    print("Nincrement:              " + str(Nincrement))
 
 # setting
 np.set_printoptions(suppress=True)
@@ -57,9 +34,22 @@ def main():
     # read sequences, adding species number in L+1 and sequence number in L+2
     # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
 
+    # Get the arguments
+    arguments = getArgs()
+    Nincrement = arguments.Nincrement
+    LengthA = arguments.Length_first_protein
+    msa_fasta_filename = arguments.MSA_file
+    species = arguments.species
+    if arguments.verbosity:
+        print("The MSA:                 " + msa_fasta_filename)
+        print("The species list:        " + species)
+        print("Length (aa) first prot.: " + str(
+            LengthA))  # TODO: check in the lenght takes into account gaps (it should be column instead of aa)
+        print("Nincrement:              " + str(Nincrement))
+
+
     # Time stamp to add as file sufix.
     time_stamp = time.strftime("%y%m%d%H%M")
-
     encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename,
                                                                                                   SpeciesNumbering_extr)
 
@@ -137,6 +127,26 @@ def main():
     if arguments.verbosity:
         print("and : " + filename)
 
+def getArgs():
+    parser = argparse.ArgumentParser()
+    # Now the parameters:
+    # Nincrement
+    parser.add_argument("-n", "--Nincrement", type=int, default=6,
+                        help="Number of pairs (with the highest confidence scores) to keep from the previous iteration (default = 6).")
+    # LengthA = 64
+    parser.add_argument("-l", "--Length_first_protein", type=int, default=64,
+                        help="The length of the first protein of the pair.")
+    # msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
+    parser.add_argument("--MSA_file", default="Standard_HKRR_dataset.fasta",
+                        help="Path to the multiple sequence alignment (MSA) in fasta format of the concatenated pairs.")
+    # Species list
+    parser.add_argument("-s", "--species", default="SpeciesNumbering_Standard_HKRR_dataset.mat",
+                        help="Species list, currently in matlab format.")
+    # Verbosity
+    parser.add_argument("-v", "--verbosity", action="store_true", default=0,
+                        help="Increase output verbosity (prints variables and rounds).")
+    return parser.parse_args()
+
 def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):
     '''
     This assumes that the first sequence is a reference sequence and that the last one is a dummy
@@ -186,7 +196,6 @@ def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):
     encoded_focus_alignment = np.delete(encoded_focus_alignment, np.where(~encoded_focus_alignment.any(axis=1)), axis=0)
     return encoded_focus_alignment, encoded_focus_alignment_headers, alignment_width
 
-
 def count_species(encoded_focus_alignment):
     '''
     returns a table with species id, 1st index in encoded_focus_alignment, last index in encoded_focus_alignment
@@ -227,7 +236,6 @@ def count_species(encoded_focus_alignment):
 
     return table_count_species
 
-
 def SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_headers):
     '''
     produce alignment where the species with only one pair are suppressed.
@@ -261,7 +269,6 @@ def SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_
 
     return NUP_alignment, NUP_alignment_headers
 
-
 def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
     '''
     scramble the pairs.
@@ -294,7 +301,6 @@ def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
 
     scrambled_alignment = np.delete(scrambled_alignment, np.where(~scrambled_alignment.any(axis=1)), axis=0)
     return scrambled_alignment
-
 
 def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     '''
@@ -393,7 +399,6 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
 
     return Results.T
 
-
 def Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, indlst):
     '''
     calculate PMI-based pairing scores between all pairs of HKs and RRs in test_seqs
@@ -437,7 +442,6 @@ def Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, indlst):
 
     return Pairing_scores
 
-
 def assignmentoptimal(distMatrix):
     '''
     Compute optimal assignment by Munkres algorithm
@@ -465,7 +469,6 @@ def assignmentoptimal(distMatrix):
         cost += value
 
     return assignment, cost
-
 
 def randomize_equal(assignment, HKRR_energy_b, uEn, vec):
     '''
