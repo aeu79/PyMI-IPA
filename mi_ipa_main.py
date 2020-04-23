@@ -5,11 +5,11 @@ from itertools import \
 # https://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
 
 import numpy as np
-import pandas as pd
+import pandas as pd # TODO: only used to read the CSV. Read it directly and remove dependency.
 import \
     scipy.io as spio  # Used only to import the species numbering in .mat format.
 # TODO: Use csv and remove it (scipy 26MB)
-
+# TODO: Add a way to make several replicates
 # TODO: Maybe delete at the end the initial scrambling (not much sense to keep it)
 
 from Bio.SeqIO.FastaIO import SimpleFastaParser
@@ -30,12 +30,17 @@ col2 = [x[1] for x in mat['SpeciesNumbering_extr']]
 SpeciesNumbering_extr = pd.DataFrame([*zip(col1, col2)])
 
 
-def main():
+def main(args=None):
     # read sequences, adding species number in L+1 and sequence number in L+2
     # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
 
     # Get the arguments
-    arguments = getArgs()
+    print(args)
+    arguments, unknown_args = getArgs(args)
+    print('Arguments: ' + str(arguments))
+    if arguments.verbosity:
+        print('Run with this arguments: ' + str(arguments))
+        print('Unknown arguments: ' + str(unknown_args))
     Nincrement = arguments.Nincrement
     LengthA = arguments.Length_first_protein
     msa_fasta_filename = arguments.MSA_file
@@ -127,8 +132,8 @@ def main():
     if arguments.verbosity:
         print("and : " + filename)
 
-def getArgs():
-    parser = argparse.ArgumentParser()
+def getArgs(args = None): # Added "args = None" to be able to pass arguments for testing (so it works also without command line arguments.
+    parser = argparse.ArgumentParser(args)
     # Now the parameters:
     # Nincrement
     parser.add_argument("-n", "--Nincrement", type=int, default=6,
@@ -137,7 +142,7 @@ def getArgs():
     parser.add_argument("-l", "--Length_first_protein", type=int, default=64,
                         help="The length of the first protein of the pair.")
     # msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
-    parser.add_argument("--MSA_file", default="Standard_HKRR_dataset.fasta",
+    parser.add_argument("-m", "--MSA_file", default="Standard_HKRR_dataset.fasta",
                         help="Path to the multiple sequence alignment (MSA) in fasta format of the concatenated pairs.")
     # Species list
     parser.add_argument("-s", "--species", default="SpeciesNumbering_Standard_HKRR_dataset.mat",
@@ -145,7 +150,8 @@ def getArgs():
     # Verbosity
     parser.add_argument("-v", "--verbosity", action="store_true", default=0,
                         help="Increase output verbosity (prints variables and rounds).")
-    return parser.parse_args()
+    #return parser.parse_args()
+    return parser.parse_known_args()
 
 def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):
     '''
@@ -208,8 +214,8 @@ def count_species(encoded_focus_alignment):
     L = alignment_width - 2
 
     table_count_species = np.zeros((N, 3))
-    if arguments.verbosity:
-        print("Shape of table_count_species: " + str(table_count_species.shape))
+    # if arguments.verbosity: # TOODO: fix this. Use a global variable of better return the shape and use it in main
+    #     print("Shape of table_count_species: " + str(table_count_species.shape))
     species_id = encoded_focus_alignment[1, L]
     iini = 1
     count = -1
