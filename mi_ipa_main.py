@@ -6,24 +6,30 @@ import pandas as pd
 import scipy.io as spio
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from munkres import Munkres
-
+import sys
 import pmis
-
-# setting
-np.set_printoptions(suppress=True)
+'''
+input1: concatenated MSA in a3m format
+input2: species col(2cols : one for protein name and one for species)
+input3: length of the first protein
+'''
 
 ### glob parameters
 replicate = 1
-Nincrement = 6
-LengthA = 613
+Nincrement = 15
 
-## load data
-msa_fasta_filename = 'test_data/test.a3m'
-SpeciesNumbering_extr = pd.read_csv('test_data/tax_lst',header=None,delimiter='\t')
+msa_fasta_filename = sys.argv[1]
+SpeciesNumbering_extr = pd.read_csv(sys.argv[2],header=None,delimiter='\t')
 unique_species_lst=SpeciesNumbering_extr[1].unique().tolist()
+LengthA=int(sys.argv[3])
 
+print('msa file is '+msa_fasta_filename)
+print('tax col is ' + sys.argv[2])
+print('Length A is '+ sys.argv[3])
 
 def main():
+    print('algorithm computation starts!')
+   
     # read sequences, adding species number in L+1 and sequence number in L+2
     # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
 
@@ -41,18 +47,21 @@ def main():
     Nrounds = math.ceil(encoded_focus_alignment.shape[0] / Nincrement + 1)
     print("Number of rounds: " + str(Nrounds))
 
+    #start from original within-species pairings:
+    encoded_training_alignment=np.delete(encoded_focus_alignment,[L,L+1],axis=1)
+
     # start from random within-speicies pairings: scrable the pairings for this.
-    encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
+    #encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
 
     ##save the species and initial indices of the sequences in the scrambled alignment we start from
-    filename = 'Res_python/IniScrambling_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
-    np.savetxt(filename, encoded_training_alignment[:, L:], fmt='%d', delimiter='\t')
-    encoded_training_alignment = np.delete(encoded_training_alignment, [L, L + 1, L + 2, L + 3], axis=1)
+    #filename = 'Res_python/ipa2_IniScrambling_Ninc' + str(Nincrement) + '_' + msa_fasta_filename.split('.')[0] + '.txt'
+    #np.savetxt(filename, encoded_training_alignment[:, L:], fmt='%d', delimiter='\t')
+    #encoded_training_alignment = np.delete(encoded_training_alignment, [L, L + 1, L + 2, L + 3], axis=1)
     #   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
 
     # initialize
     NSeqs_new = 0
-    Output = np.zeros((Nrounds, 6))
+#    Output = np.zeros((Nrounds, 6))
 
     # iterate
     for rounds in range(Nrounds):
@@ -68,10 +77,6 @@ def main():
             if NSeqs_new >= Results.shape[0]:
                 NSeqs_new = Results.shape[0]  # for the last round, all paired sequences will be in the training set
 
-            # save to Output the number of TP or FP in the training set
-            Output[rounds, 4] = np.count_nonzero(Results[:NSeqs_new, 1] == Results[:NSeqs_new, 2])
-            Output[rounds, 5] = np.count_nonzero(Results[:NSeqs_new, 1] != Results[:NSeqs_new, 2])
-
             # construct new training set
             newseqs = np.zeros((NSeqs_new, L))
 
@@ -83,20 +88,17 @@ def main():
 
             encoded_training_alignment = newseqs
 
+
         PMIs, Meff = pmis.compute_pmis(encoded_training_alignment, 0.15, 0.15)
 
         # compute pairings and gap scores for all pairs
         Results = Predict_pairs(encoded_focus_alignment, -PMIs, LengthA, table_count_species)
-        Output[rounds, 0] = NSeqs_new
-        Output[rounds, 1] = Meff
-        Output[rounds, 2] = np.count_nonzero(Results[:, 1] == Results[:, 2])
-        Output[rounds, 3] = np.count_nonzero(Results[:, 1] != Results[:, 2])
+    
+    #save the results
+    mid_name=msa_fasta_filename.split('/')[1].split('.')[0]
 
-    filename = 'Res_python/TP_data_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
-    np.savetxt(filename, Output, fmt=['%d', '%1.3f', '%d', '%d', '%d', '%d'], delimiter='\t')
-
-    filename = 'Res_python/Resf_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
-    np.savetxt(filename, Results, fmt=['%d', '%d', '%d', '%1.3f', '%1.3f'], delimiter='\t')
+    filename = 'Res_python/Resf_Ninc' + str(Nincrement) + '_' + mid_name + '.txt'
+    np.savetxt(filename, Results, fmt=['%d', '%1.2f', '%1.2f', '%1.3f', '%1.3f'], delimiter='\t')
 
 
 
@@ -165,7 +167,7 @@ def count_species(encoded_focus_alignment):
     species_id = encoded_focus_alignment[1, L]
     iini = 1
     count = -1
-    for i in range(1, N - 1):
+    for i in range(1, N):
         species_id_prev = species_id
         species_id = encoded_focus_alignment[i, L]
 
@@ -182,7 +184,7 @@ def count_species(encoded_focus_alignment):
     ifin = N - 1
     table_count_species[count, 0] = species_id
     table_count_species[count, 1] = iini
-    table_count_species[count, 2] = ifin - 1
+    table_count_species[count, 2] = ifin
 
     table_count_species = np.delete(table_count_species, np.where(~table_count_species.any(axis=1)), axis=0)
 
@@ -277,7 +279,7 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     # col 3: RR index in initial alignment
     # col 4: score of pairing
     # col 5: gap
-    Results = np.zeros((5, N - 2)).astype(object)  # need to transform to get the same format as matlab version.
+    Results = np.zeros((5, N - 1)).astype(object)  # need to transform to get the same format as matlab version.
     # total pair counter
     pre_tol = 0
     cur_tol = 0
@@ -299,6 +301,7 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
             # random permutation
             thePerm = np.arange(Nseqs)
             np.random.shuffle(thePerm)  # avoid spurious positive results
+            assignment = thePerm
             Pairing_scores_b = Pairing_scores - Pairing_scores.min()
 
         else:
@@ -317,11 +320,8 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
         bigval = 1e3 * Pairing_scores_b.max()
 
         cur_tol = pre_tol + Nseqs
-        # print(i)
-        Results[:-1, pre_tol:cur_tol] = np.array(
-            [np.repeat(species_id, Nseqs), test_seqs[:, L + 1], test_seqs[assignment, L + 1],
-             Pairing_scores[np.arange(Nseqs), assignment]])
-
+#        print(i,pre_tol,cur_tol)
+        Results[:-1, pre_tol:cur_tol] = np.array([np.repeat(species_id, Nseqs),(test_seqs[:,L+1]-pre_tol-1)/100+species_id,(test_seqs[assignment,L+1]-pre_tol-1)/100+species_id,Pairing_scores[np.arange(Nseqs),assignment]])
         if Nseqs == 1:
             Results[4, pre_tol:cur_tol] = abs(Pairing_scores)
 
