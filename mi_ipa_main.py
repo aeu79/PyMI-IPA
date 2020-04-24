@@ -1,123 +1,164 @@
 import math
 import time
-from datetime import timedelta
-from itertools import product
-import pmis
+from itertools import \
+    product  # TODO: replace itertools.product with  numpy.meshgrid() (claimed to be 5 times faster):
+# https://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
+
 import numpy as np
-import pandas as pd
-import scipy.io as spio
+import pandas as pd # TODO: only used to read the CSV. Read it directly and remove dependency.
+import \
+    scipy.io as spio  # Used only to import the species numbering in .mat format.
+# TODO: Use csv and remove it (scipy 26MB)
+# TODO: Add a way to make several replicates
+# TODO: Maybe delete at the end the initial scrambling (not much sense to keep it)
+
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from munkres import Munkres
 
-#start timer
-start = time.time()
+import pmis
+import argparse
 
-#setting
+
+
+# setting
 np.set_printoptions(suppress=True)
 
-### glob parameters
-replicate=1
-Nincrement=1600
-LengthA=64
-msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
-mat=spio.loadmat('SpeciesNumbering_Standard_HKRR_dataset.mat',squeeze_me=True)
-
-##from matlab data to df
+## from matlab data to df
+mat = spio.loadmat('SpeciesNumbering_Standard_HKRR_dataset.mat', squeeze_me=True)
 col1 = list(range(len(mat['SpeciesNumbering_extr'])))
 col2 = [x[1] for x in mat['SpeciesNumbering_extr']]
-SpeciesNumbering_extr = pd.DataFrame([*zip(col1,col2)])
+SpeciesNumbering_extr = pd.DataFrame([*zip(col1, col2)])
 
 
-def main():
-    
+def main(args=None):
     # read sequences, adding species number in L+1 and sequence number in L+2
     # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
 
-    encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr)
-    
+    # Get the arguments
+    print(args)
+    arguments, unknown_args = getArgs(args)
+    print('Arguments: ' + str(arguments))
+    if arguments.verbosity:
+        print('Run with this arguments: ' + str(arguments))
+        print('Unknown arguments: ' + str(unknown_args))
+    Nincrement = arguments.Nincrement
+    LengthA = arguments.Length_first_protein
+    msa_fasta_filename = arguments.MSA_file
+    species = arguments.species
+    if arguments.verbosity:
+        print("The MSA:                 " + msa_fasta_filename)
+        print("The species list:        " + species)
+        print("Length (aa) first prot.: " + str(
+            LengthA))  # TODO: check in the lenght takes into account gaps (it should be column instead of aa)
+        print("Nincrement:              " + str(Nincrement))
+
+
+    # Time stamp to add as file sufix.
+    time_stamp = time.strftime("%y%m%d%H%M")
+    encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename,
+                                                                                                  SpeciesNumbering_extr)
+
     # suppress species with one pair
-    encoded_focus_alignment, encoded_focus_alignment_headers = SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_headers)
+    encoded_focus_alignment, encoded_focus_alignment_headers = SuppressSpeciesWithOnePair(encoded_focus_alignment,
+                                                                                          encoded_focus_alignment_headers)
     # tabulate species and sequences within species
     table_count_species = count_species(encoded_focus_alignment)
 
-    #number of sequences
+    # number of sequences
     N = encoded_focus_alignment.shape[0]
-    print("Number of sequences: " + str(N))
-
     # number of runs(last one -> all sequences are in the training set)
-    Nrounds = math.ceil(encoded_focus_alignment.shape[0]/Nincrement + 1)
-    print("Number of rounds: " + str(Nrounds))
+    Nrounds = math.ceil(encoded_focus_alignment.shape[0] / Nincrement + 1)
+    if arguments.verbosity:
+        print("Number of sequences: " + str(N))
+        print("Number of rounds: " + str(Nrounds))
 
-    #start from random within-speicies pairings: scrable the pairings for this. 
+    # start from random within-species pairings: scramble the pairings for this.
     encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
-    
-    ##save the species and initial indices of the sequences in the scrambled alignment we start from
-    filename='Res_python/IniScrambling_Ninc'+ str(Nincrement) + '_rep' + str(replicate) +'.txt'
-    np.savetxt(filename,encoded_training_alignment[:,L:],fmt='%d',delimiter='\t')
-    encoded_training_alignment = np.delete(encoded_training_alignment,[ L , L + 1 , L + 2 , L + 3 ],axis = 1)
-#   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
 
-   #initialize
+    ##save the species and initial indices of the sequences in the scrambled alignment we start from
+    filename = 'Res_python/IniScrambling_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
+    np.savetxt(filename, encoded_training_alignment[:, L:], fmt='%d', delimiter='\t')
+    encoded_training_alignment = np.delete(encoded_training_alignment, [L, L + 1, L + 2, L + 3], axis=1)
+    #   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
+
+    # initialize
     NSeqs_new = 0
     Output = np.zeros((Nrounds, 6))
 
-    #iterate
+    # iterate
     for rounds in range(Nrounds):
-
-        print("Round: " + str(rounds +1 ))
+        if arguments.verbosity:
+            print("Round: " + str(rounds + 1))
 
         if rounds > 0:
             # Use the gap to rank pairs
             Results = Results[Results[:, -1].argsort()[::-1]]
 
-            #number of sequences that will be added to form the training set for this round
+            # number of sequences that will be added to form the training set for this round
             NSeqs_new = NSeqs_new + Nincrement
             if NSeqs_new >= Results.shape[0]:
-                NSeqs_new = Results.shape[0] # for the last round, all paired sequences will be in the training set
+                NSeqs_new = Results.shape[0]  # for the last round, all paired sequences will be in the training set
 
-            #save to Output the number of TP or FP in the training set
-            Output[rounds, 4] = np.count_nonzero(Results[:NSeqs_new,1]==Results[:NSeqs_new,2])
-            Output[rounds, 5] = np.count_nonzero(Results[:NSeqs_new,1]!=Results[:NSeqs_new,2])
+            # save to Output the number of TP or FP in the training set
+            Output[rounds, 4] = np.count_nonzero(Results[:NSeqs_new, 1] == Results[:NSeqs_new, 2])
+            Output[rounds, 5] = np.count_nonzero(Results[:NSeqs_new, 1] != Results[:NSeqs_new, 2])
 
-            #construct new training set
+            # construct new training set
             newseqs = np.zeros((NSeqs_new, L))
 
-            sorted_lst1 = np.searchsorted(encoded_focus_alignment[:,L+1],Results[:NSeqs_new,1])
-            sorted_lst2 = np.searchsorted(encoded_focus_alignment[:,L+1],Results[:NSeqs_new,2])
+            sorted_lst1 = np.searchsorted(encoded_focus_alignment[:, L + 1], Results[:NSeqs_new, 1])
+            sorted_lst2 = np.searchsorted(encoded_focus_alignment[:, L + 1], Results[:NSeqs_new, 2])
 
-            newseqs[:,:LengthA] = encoded_focus_alignment[sorted_lst1, :LengthA]
-            newseqs[:,LengthA:L] = encoded_focus_alignment[sorted_lst2, LengthA:L]
+            newseqs[:, :LengthA] = encoded_focus_alignment[sorted_lst1, :LengthA]
+            newseqs[:, LengthA:L] = encoded_focus_alignment[sorted_lst2, LengthA:L]
 
             encoded_training_alignment = newseqs
 
-
-
         PMIs, Meff = pmis.compute_pmis(encoded_training_alignment, 0.15, 0.15)
 
-        #compute pairings and gap scores for all pairs
+        # compute pairings and gap scores for all pairs
         Results = Predict_pairs(encoded_focus_alignment, -PMIs, LengthA, table_count_species)
         Output[rounds, 0] = NSeqs_new
         Output[rounds, 1] = Meff
-        Output[rounds, 2] = np.count_nonzero(Results[:,1]==Results[:,2])
-        Output[rounds, 3] = np.count_nonzero(Results[:,1]!=Results[:,2])
-    
+        Output[rounds, 2] = np.count_nonzero(Results[:, 1] == Results[:, 2])
+        Output[rounds, 3] = np.count_nonzero(Results[:, 1] != Results[:, 2])
 
-    filename = 'Res_python/TP_data_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
-    np.savetxt(filename, Output,fmt=['%d','%1.3f','%d','%d','%d','%d'], delimiter='\t')
+    filename = 'Res_python/TP_data_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
+    np.savetxt(filename, Output, fmt=['%d', '%1.3f', '%d', '%d', '%d', '%d'], delimiter='\t')
+    if arguments.verbosity:
+        print("Saved: " + filename)
+    filename = 'Res_python/Resf_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
+    np.savetxt(filename, Results, fmt=['%d', '%d', '%d', '%1.3f', '%1.3f'], delimiter='\t')
+    if arguments.verbosity:
+        print("and : " + filename)
 
-    filename = 'Res_python/Resf_Ninc' + str(Nincrement) + '_rep' + str(replicate) + '.txt'
-    np.savetxt(filename,Results,fmt=['%d','%d','%d','%1.3f','%1.3f'], delimiter='\t')
+def getArgs(args = None): # Added "args = None" to be able to pass arguments for testing (so it works also without command line arguments.
+    parser = argparse.ArgumentParser(args)
+    # Now the parameters:
+    # Nincrement
+    parser.add_argument("-n", "--Nincrement", type=int, default=6,
+                        help="Number of pairs (with the highest confidence scores) to keep from the previous iteration (default = 6).")
+    # LengthA = 64
+    parser.add_argument("-l", "--Length_first_protein", type=int, default=64,
+                        help="The length of the first protein of the pair.")
+    # msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
+    parser.add_argument("-m", "--MSA_file", default="Standard_HKRR_dataset.fasta",
+                        help="Path to the multiple sequence alignment (MSA) in fasta format of the concatenated pairs.")
+    # Species list
+    parser.add_argument("-s", "--species", default="SpeciesNumbering_Standard_HKRR_dataset.mat",
+                        help="Species list, currently in matlab format.")
+    # Verbosity
+    parser.add_argument("-v", "--verbosity", action="store_true", default=0,
+                        help="Increase output verbosity (prints variables and rounds).")
+    #return parser.parse_args()
+    return parser.parse_known_args()
 
-    elapsed = (time.time() - start)
-    print(str(timedelta(seconds=elapsed)))
-
-
-def readAlignment_and_NumberSpecies(msa_fasta_filename,SpeciesNumbering_extr):
+def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):
     '''
     This assumes that the first sequence is a reference sequence and that the last one is a dummy
     '''
 
-    #read in alignment
+    # read in alignment
     full_alignment = []
     encoded_focus_alignment_headers = []
     with open(msa_fasta_filename) as handle:
@@ -129,10 +170,10 @@ def readAlignment_and_NumberSpecies(msa_fasta_filename,SpeciesNumbering_extr):
     alignment_width = len(full_alignment[0])
 
     # initialize
-    encoded_focus_alignment = np.zeros((alignment_height, alignment_width+2))
+    encoded_focus_alignment = np.zeros((alignment_height, alignment_width + 2))
 
     # encoded the sequence
-    letter2number_map = {'-': 0, 'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H':7, 'K': 9, 'L': 10,
+    letter2number_map = {'-': 0, 'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'K': 9, 'L': 10,
                          'M': 11, 'N': 12, 'P': 13, 'Q': 14, 'R': 15, 'S': 16, 'T': 17, 'V': 18, 'W': 20,
                          'B': -2, 'Z': -2, 'J': -2, 'O': -2, 'U': -2, 'X': -2, 'a': -3, 'c': -3, 'd': -3, 'e': -3,
                          'f': -3, 'g': -3, 'h': -3, 'i': -3, 'k': -3, 'l': -3, 'm': -3, 'n': -3, 'p': -3, 'q': -3,
@@ -141,42 +182,44 @@ def readAlignment_and_NumberSpecies(msa_fasta_filename,SpeciesNumbering_extr):
                          '.': -4}
 
     for i in range(alignment_height):
-        encoded_focus_alignment[i, :-2] = np.array([letter2number_map.get(ch,0) for ch in full_alignment[i]])
+        encoded_focus_alignment[i, :-2] = np.array([letter2number_map.get(ch, 0) for ch in full_alignment[i]])
 
-        if i == 0 :
+        if i == 0:
             encoded_focus_alignment[i, -2] = -1
 
-        if 0 < i < alignment_height-1 :
+        if 0 < i < alignment_height - 1:
             species_id = encoded_focus_alignment_headers[i].split('|')[1]
-            #print(i,species_id)
-            encoded_focus_alignment[i, -2] =SpeciesNumbering_extr.loc[SpeciesNumbering_extr[1]==species_id,0].iloc[0]
+            # print(i,species_id)
+            encoded_focus_alignment[i, -2] = SpeciesNumbering_extr.loc[SpeciesNumbering_extr[1] == species_id, 0].iloc[
+                0]
 
-        if i < alignment_height -1:
+        if i < alignment_height - 1:
             encoded_focus_alignment[i, -1] = i
         else:
             encoded_focus_alignment[i, -2] = float("NaN")
             encoded_focus_alignment[i, -1] = float("NaN")
 
     encoded_focus_alignment = np.delete(encoded_focus_alignment, np.where(~encoded_focus_alignment.any(axis=1)), axis=0)
-    return encoded_focus_alignment, encoded_focus_alignment_headers,alignment_width
+    return encoded_focus_alignment, encoded_focus_alignment_headers, alignment_width
 
 def count_species(encoded_focus_alignment):
     '''
-    return a table with species id, 1st index in encoded_focus_alignment, last index in encoded_focus_alignment
+    returns a table with species id, 1st index in encoded_focus_alignment, last index in encoded_focus_alignment
     :param
     encoded_focus_alignment: multiple sequence alignment
-    :return: a table contains index start & end points for each species.
+    :returns: a table that contains index start & end points for each species.
     '''
 
     (N, alignment_width) = encoded_focus_alignment.shape
     L = alignment_width - 2
 
     table_count_species = np.zeros((N, 3))
-    #print(table_count_species.shape)
+    # if arguments.verbosity: # TOODO: fix this. Use a global variable of better return the shape and use it in main
+    #     print("Shape of table_count_species: " + str(table_count_species.shape))
     species_id = encoded_focus_alignment[1, L]
     iini = 1
     count = -1
-    for i in range(1, N-1):
+    for i in range(1, N - 1):
         species_id_prev = species_id
         species_id = encoded_focus_alignment[i, L]
 
@@ -199,7 +242,6 @@ def count_species(encoded_focus_alignment):
 
     return table_count_species
 
-
 def SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_headers):
     '''
     produce alignment where the species with only one pair are suppressed.
@@ -213,22 +255,22 @@ def SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_
     # count : how many proteins in this species
     # to do : remove species within one protein from the alignment
 
-    colval , count = np.unique(encoded_focus_alignment[:, -2], return_counts=True)
+    colval, count = np.unique(encoded_focus_alignment[:, -2], return_counts=True)
     colval = colval.astype(int)
 
-    #col stores speciesID which has only one protein
-    col=[]
+    # col stores speciesID which has only one protein
+    col = []
     for speciesID, occu in dict(zip(colval, count)).items():
         if occu == 1:
             col.append(speciesID)
 
-    #delete the first sequence  and last dummy...?(she defined it!)
+    # delete the first sequence  and last dummy...?(she defined it!)
     del col[0]
     del col[-1]
 
     NUP_alignment = encoded_focus_alignment
-    mask = ~np.isin(NUP_alignment[:,-2],col)
-    NUP_alignment = NUP_alignment[mask,:]
+    mask = ~np.isin(NUP_alignment[:, -2], col)
+    NUP_alignment = NUP_alignment[mask, :]
     NUP_alignment_headers = np.array(encoded_focus_alignment_headers)[mask].tolist()
 
     return NUP_alignment, NUP_alignment_headers
@@ -242,27 +284,26 @@ def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
     :return: scrambled multiple sequence alignment.
     '''
     N, alignment_width = encoded_focus_alignment.shape
-    L = alignment_width - 2   #last 2 cols contain species index and initial sequence index!
+    L = alignment_width - 2  # last 2 cols contain species index and initial sequence index!
 
     # added columns will contain the same data but for the RR
-    scrambled_alignment = np.zeros((N,L+4))
+    scrambled_alignment = np.zeros((N, L + 4))
 
     # loop over species
     for i in range(len(table_count_species)):
         # number of sequences in this species
-        Nseqs = int(table_count_species[i,2] -table_count_species[i,1] + 1)
-        #random permutation
+        Nseqs = int(table_count_species[i, 2] - table_count_species[i, 1] + 1)
+        # random permutation
         thePerm = np.arange(Nseqs)
         np.random.shuffle(thePerm)
 
         for j in range(Nseqs):
-
             HKIndex = int(table_count_species[i, 1] + j)
             RRIndex = int(table_count_species[i, 1] + thePerm[j])
             scrambled_alignment[HKIndex, :LengthA] = encoded_focus_alignment[HKIndex, :LengthA]
-            scrambled_alignment[HKIndex, LengthA :L] = encoded_focus_alignment[RRIndex, LengthA :L]
-            scrambled_alignment[HKIndex, L :L + 2] = encoded_focus_alignment[HKIndex, L :L + 2]
-            scrambled_alignment[HKIndex, L + 2:L + 4] = encoded_focus_alignment[RRIndex, L :L + 2]
+            scrambled_alignment[HKIndex, LengthA:L] = encoded_focus_alignment[RRIndex, LengthA:L]
+            scrambled_alignment[HKIndex, L:L + 2] = encoded_focus_alignment[HKIndex, L:L + 2]
+            scrambled_alignment[HKIndex, L + 2:L + 4] = encoded_focus_alignment[RRIndex, L:L + 2]
 
     scrambled_alignment = np.delete(scrambled_alignment, np.where(~scrambled_alignment.any(axis=1)), axis=0)
     return scrambled_alignment
@@ -287,71 +328,84 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     # col 3: RR index in initial alignment
     # col 4: score of pairing
     # col 5: gap
-    Results = np.zeros((5, N-2)).astype(object)  #need to transform to get the same format as matlab version.
+    Results = np.zeros((5, N - 2)).astype(object)  # need to transform to get the same format as matlab version.
     # total pair counter
     pre_tol = 0
     cur_tol = 0
 
-    for i in range(table_count_species.shape[0]):
-        test_seqs = encoded_focus_alignment[table_count_species[i, 1]:table_count_species[i, 2]+1,:]
+    ## index coombination of two individual proteins: a[0,63] b[64,175]
+    ## residue_in_first,residue_in_second appear in pairs: [0,64],[0,65],[0,66]...[63,175]
+    index_aa_list = []
+    residues_in_first = list(range(LengthA))
+    residues_in_second = list(range(LengthA, L))
+
+    # for residue_in_first, residue_in_second in list(product(residues_in_first, residues_in_second):
+    for residue_in_first, residue_in_second in list(product(list(range(LengthA)), list(range(LengthA, L)))):
+        index_aa_list.append([residue_in_first, residue_in_second])
+
+    # TODO: indlst is generated every single time (4407 times, actually, for the small dataset of the paper). Check if changes and how in each iteration. (trying to remove it)
+    # prueba = []
+    # prueba = np.array(np.meshgrid(list(range(LengthA)), list(range(LengthA, L))))
+    ## I'll try to precalculate it
+
+    for i in range(table_count_species.shape[
+                       0]):  # TODO: whatchout, it seems that uses ol species so it should check what happens with the reduced dataset for testing
+        test_seqs = encoded_focus_alignment[table_count_species[i, 1]:table_count_species[i, 2] + 1, :]
         Nseqs = table_count_species[i, 2] - table_count_species[i, 1] + 1
         species_id = table_count_species[i, 0]
 
-        #now compute the PMI-based pairing score of all the HK-RR pairs within the species corresponding to i
-        Pairing_scores = Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L)
+        # now compute the PMI-based pairing score of all the HK-RR pairs within the species corresponding to i
+        Pairing_scores = Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, index_aa_list)
 
-        if Nseqs == 1 :
+        if Nseqs == 1:
             assignment = 1
-            Pairing_scores_b = Pairing_scores - Pairing_scores.min() # ensure that all elements are >= 0
+            Pairing_scores_b = Pairing_scores - Pairing_scores.min()  # ensure that all elements are >= 0
 
         elif Pairing_scores.min() == Pairing_scores.max():
 
             # random permutation
             thePerm = np.arange(Nseqs)
-            np.random.shuffle(thePerm) # avoid spurious positive results
+            np.random.shuffle(thePerm)  # avoid spurious positive results
             Pairing_scores_b = Pairing_scores - Pairing_scores.min()
 
         else:
             # use the Hungarian algorithm
             Pairing_scores_b = Pairing_scores - Pairing_scores.min()
-            assignment, score = assignmentoptimal(Pairing_scores_b.tolist()) # input requires list not np.array
+            assignment, score = assignmentoptimal(Pairing_scores_b.tolist())  # input requires list not np.array
             # deal with identical rows, i.e.effectively identical HKs
             uEn = np.unique(Pairing_scores_b, axis=0)
             if uEn.shape[0] != Pairing_scores_b.shape[0]:
-
-                assignment = randomize_equal(assignment, Pairing_scores_b, uEn,'row')
+                assignment = randomize_equal(assignment, Pairing_scores_b, uEn, 'row')
 
             uEn = np.unique(Pairing_scores_b, axis=1)
             if uEn.shape[1] != Pairing_scores_b.shape[1]:
-                assignment = randomize_equal(assignment, Pairing_scores_b, uEn,'col')
+                assignment = randomize_equal(assignment, Pairing_scores_b, uEn, 'col')
 
         bigval = 1e3 * Pairing_scores_b.max()
 
-
         cur_tol = pre_tol + Nseqs
-        #print(i)
-        Results[:-1, pre_tol:cur_tol] = np.array([np.repeat(species_id, Nseqs),test_seqs[:,L+1],test_seqs[assignment,L+1],
-                                                  Pairing_scores[np.arange(Nseqs),assignment]])
+        Results[:-1, pre_tol:cur_tol] = np.array(
+            [np.repeat(species_id, Nseqs), test_seqs[:, L + 1], test_seqs[assignment, L + 1],
+             Pairing_scores[np.arange(Nseqs), assignment]])
 
         if Nseqs == 1:
             Results[4, pre_tol:cur_tol] = abs(Pairing_scores)
 
         elif Pairing_scores.min() == Pairing_scores.max():
-            Results[4,pre_tol:cur_tol] = 0
+            Results[4, pre_tol:cur_tol] = 0
 
         else:
             for j in range(Nseqs):
                 Pairing_scores_mod = np.copy(Pairing_scores_b)
                 Pairing_scores_mod[j, assignment[j]] = bigval
                 useless, score_mod = assignmentoptimal(Pairing_scores_mod.tolist())
-                Results[4,pre_tol+j] = score_mod - score
+                Results[4, pre_tol + j] = score_mod - score
 
         pre_tol = cur_tol
 
     return Results.T
 
-
-def Compute_pairing_scores(test_seqs,Nseqs,PMIs, LengthA, L):
+def Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, indlst):
     '''
     calculate PMI-based pairing scores between all pairs of HKs and RRs in test_seqs
     Line: HK; Col: RR.
@@ -365,21 +419,26 @@ def Compute_pairing_scores(test_seqs,Nseqs,PMIs, LengthA, L):
 
     Pairing_scores = np.zeros((Nseqs, Nseqs))
 
-    ## index coombination of two individual proteins: a[0,63] b[64,175]
-    ## k,l appear in pairs: [0,64],[0,65],[0,66]...[63,175]
-    indlst = []
-    for k,l in list(product(list(range(LengthA)),list(range(LengthA,L)))):
-        indlst.append([k,l])
+    # ## index coombination of two individual proteins: a[0,63] b[64,175]
+    # ## k,l appear in pairs: [0,64],[0,65],[0,66]...[63,175]
+    # indlst = []
+    #
+    # for k, l in list(product(list(range(LengthA)), list(range(LengthA, L)))):
+    #     indlst.append([k, l])
+    # # TODO: indlst is generated every single time (4407 times, actually, for the small dataset of the paper). Check if changes and how in each iteration. (trying to remove it)
+    # # prueba = []
+    # # prueba = np.array(np.meshgrid(list(range(LengthA)), list(range(LengthA, L))))
 
     ## length of a_lst/b_lst : 64*112=7168
-    a_lst = [x[0] for x in indlst]   # element in a_lst: position in protein A (from 0 to 63)
-    b_lst = [x[1] for x in indlst]   # element in b_lst: position in protein B (from 64 to 175)
+    a_lst = [x[0] for x in indlst]  # element in a_lst: position in protein A (from 0 to 63)
+    b_lst = [x[1] for x in indlst]  # element in b_lst: position in protein B (from 64 to 175)
 
+    # assert index_aa_list == indlst # Never failed, so it's the same.
 
     ## fill in Pairing_scores matrix
     for index in np.ndindex(Pairing_scores.shape):
-        aa1_lst = test_seqs[index[0],a_lst]
-        aa2_lst = test_seqs[index[1],b_lst]
+        aa1_lst = test_seqs[index[0], a_lst]
+        aa2_lst = test_seqs[index[1], b_lst]
 
         # ## -1 : aa1_lst.max is 21.0 and need to be 20 and integer.
         # aa1_lst = [int(x)-1 for x in aa1_lst]
@@ -417,8 +476,7 @@ def assignmentoptimal(distMatrix):
 
     return assignment, cost
 
-
-def randomize_equal(assignment,HKRR_energy_b,uEn,vec):
+def randomize_equal(assignment, HKRR_energy_b, uEn, vec):
     '''
     deal with identical columns, i.e. effectively identical RRs
     :param assignment: assignment vector from Hungarian algorithm
@@ -435,18 +493,12 @@ def randomize_equal(assignment,HKRR_energy_b,uEn,vec):
     for i in range(uEn.shape[0]):
         rows = np.where((uEn[i] == HKRR_energy_b).all(axis=1))
         if len(rows[0]) > 1:
-           thePerm = np.arange(len(rows[0]))
-           np.random.shuffle(thePerm)
-         #  print(thePerm)
-           assignment[rows] = assignment[rows[0][thePerm]]
+            thePerm = np.arange(len(rows[0]))
+            np.random.shuffle(thePerm)
+            assignment[rows] = assignment[rows[0][thePerm]]
 
     return assignment
 
 
-
 if __name__ == "__main__":
     main()
-
-
-
-
