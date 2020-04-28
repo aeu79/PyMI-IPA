@@ -1,13 +1,12 @@
 import math
 import time
-from itertools import \
-    product  # TODO: replace itertools.product with  numpy.meshgrid() (claimed to be 5 times faster):
+from itertools import product
+# TODO: replace itertools.product with  numpy.meshgrid() (claimed to be 5 times faster):
 # https://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
-
 import numpy as np
-import pandas as pd # TODO: only used to read the CSV. Read it directly and remove dependency.
-import \
-    scipy.io as spio  # Used only to import the species numbering in .mat format.
+import pandas as pd  # TODO: only used to read the CSV. Read it directly and remove dependency.
+import scipy.io as spio
+# TODO: Used only to import the species numbering in .mat format and extract unique species.
 # TODO: Use csv and remove it (scipy 26MB)
 # TODO: Add a way to make several replicates
 # TODO: Maybe delete at the end the initial scrambling (not much sense to keep it)
@@ -18,12 +17,10 @@ from munkres import Munkres
 import pmis
 import argparse
 
-
-
 # setting
 np.set_printoptions(suppress=True)
 
-## from matlab data to df
+# from matlab data to df
 mat = spio.loadmat('SpeciesNumbering_Standard_HKRR_dataset.mat', squeeze_me=True)
 col1 = list(range(len(mat['SpeciesNumbering_extr'])))
 col2 = [x[1] for x in mat['SpeciesNumbering_extr']]
@@ -51,7 +48,6 @@ def main(args=None):
         print("Length (aa) first prot.: " + str(
             LengthA))  # TODO: check in the lenght takes into account gaps (it should be column instead of aa)
         print("Nincrement:              " + str(Nincrement))
-
 
     # Time stamp to add as file sufix.
     time_stamp = time.strftime("%y%m%d%H%M")
@@ -132,7 +128,9 @@ def main(args=None):
     if arguments.verbosity:
         print("and : " + filename)
 
-def getArgs(args = None): # Added "args = None" to be able to pass arguments for testing (so it works also without command line arguments.
+
+def getArgs(
+        args=None):  # Added "args = None" to be able to pass arguments for testing (so it works also without command line arguments.
     parser = argparse.ArgumentParser(args)
     # Now the parameters:
     # Nincrement
@@ -150,8 +148,9 @@ def getArgs(args = None): # Added "args = None" to be able to pass arguments for
     # Verbosity
     parser.add_argument("-v", "--verbosity", action="store_true", default=0,
                         help="Increase output verbosity (prints variables and rounds).")
-    #return parser.parse_args()
+    # return parser.parse_args()
     return parser.parse_known_args()
+
 
 def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):
     '''
@@ -202,6 +201,7 @@ def readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr):
     encoded_focus_alignment = np.delete(encoded_focus_alignment, np.where(~encoded_focus_alignment.any(axis=1)), axis=0)
     return encoded_focus_alignment, encoded_focus_alignment_headers, alignment_width
 
+
 def count_species(encoded_focus_alignment):
     '''
     returns a table with species id, 1st index in encoded_focus_alignment, last index in encoded_focus_alignment
@@ -242,6 +242,7 @@ def count_species(encoded_focus_alignment):
 
     return table_count_species
 
+
 def SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_headers):
     '''
     produce alignment where the species with only one pair are suppressed.
@@ -275,6 +276,7 @@ def SuppressSpeciesWithOnePair(encoded_focus_alignment, encoded_focus_alignment_
 
     return NUP_alignment, NUP_alignment_headers
 
+
 def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
     '''
     scramble the pairs.
@@ -307,6 +309,7 @@ def ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species):
 
     scrambled_alignment = np.delete(scrambled_alignment, np.where(~scrambled_alignment.any(axis=1)), axis=0)
     return scrambled_alignment
+
 
 def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     '''
@@ -405,6 +408,7 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
 
     return Results.T
 
+
 def Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, indlst):
     '''
     calculate PMI-based pairing scores between all pairs of HKs and RRs in test_seqs
@@ -448,6 +452,7 @@ def Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, indlst):
 
     return Pairing_scores
 
+
 def assignmentoptimal(distMatrix):
     '''
     Compute optimal assignment by Munkres algorithm
@@ -475,6 +480,7 @@ def assignmentoptimal(distMatrix):
         cost += value
 
     return assignment, cost
+
 
 def randomize_equal(assignment, HKRR_energy_b, uEn, vec):
     '''
