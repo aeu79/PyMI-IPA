@@ -18,9 +18,15 @@ import unittest
 
 # noinspection SpellCheckingInspection
 def profiler(output_stats='profile_stats'):
+    """
+    Usage:
+        import testing
+        import mi_ipa_main
+        testing.profiler(arguments, output_stats) # arguments not implemented yet as cProfiler crashes with variables.
+    """
     import cProfile
-    # import mi_ipa_main # Using this import and the following command crashes cProfile (report?):
-    # cProfile.run(mi_ipa_main.main(), 'profile_stats', 'tottime')
+    # import mi_ipa_main
+    # cProfile.run(mi_ipa_main.main(), 'profile_stats', 'tottime') # Using this import and the following command crashes cProfile (report?):
     import pstats
 
     cProfile.run('mi_ipa_main.main()', 'profile_stats', 'tottime')
