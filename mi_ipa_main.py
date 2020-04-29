@@ -16,6 +16,7 @@ from munkres import Munkres
 
 import pmis
 import argparse
+from pathlib import Path
 
 # setting
 np.set_printoptions(suppress=True)
@@ -40,6 +41,13 @@ def main(args=None):
         print('Unknown arguments: ' + str(unknown_args))
     Nincrement = arguments.Nincrement
     LengthA = arguments.Length_first_protein
+
+    # Create output folder (if it doesn't exist)
+    output_path = arguments.output
+    if not output_path.endswith("/"):
+        output_path += "/"
+    Path(output_path).mkdir(parents=True, exist_ok=True)
+
     msa_fasta_filename = arguments.MSA_file
     species = arguments.species
     if arguments.verbosity:
@@ -72,7 +80,7 @@ def main(args=None):
     encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
 
     ##save the species and initial indices of the sequences in the scrambled alignment we start from
-    filename = 'Res_python/IniScrambling_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
+    filename = output_path + 'Starting_scrambled_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
     np.savetxt(filename, encoded_training_alignment[:, L:], fmt='%d', delimiter='\t')
     encoded_training_alignment = np.delete(encoded_training_alignment, [L, L + 1, L + 2, L + 3], axis=1)
     #   np.save('encoded_focus_alignment.npy',encoded_focus_alignment)
@@ -119,11 +127,11 @@ def main(args=None):
         Output[rounds, 2] = np.count_nonzero(Results[:, 1] == Results[:, 2])
         Output[rounds, 3] = np.count_nonzero(Results[:, 1] != Results[:, 2])
 
-    filename = 'Res_python/TP_data_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
+    filename = output_path + 'TP_data_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
     np.savetxt(filename, Output, fmt=['%d', '%1.3f', '%d', '%d', '%d', '%d'], delimiter='\t')
     if arguments.verbosity:
         print("Saved: " + filename)
-    filename = 'Res_python/Resf_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
+    filename = output_path + 'Resf_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
     np.savetxt(filename, Results, fmt=['%d', '%d', '%d', '%1.3f', '%1.3f'], delimiter='\t')
     if arguments.verbosity:
         print("and : " + filename)
@@ -134,19 +142,31 @@ def getArgs(
     parser = argparse.ArgumentParser(args)
     # Now the parameters:
     # Nincrement
-    parser.add_argument("-n", "--Nincrement", type=int, default=6,
+    parser.add_argument("-n", "--Nincrement",
+                        type=int,
+                        default=6,
                         help="Number of pairs (with the highest confidence scores) to keep from the previous iteration (default = 6).")
     # LengthA = 64
-    parser.add_argument("-l", "--Length_first_protein", type=int, default=64,
+    parser.add_argument("-l", "--Length_first_protein",
+                        type=int,
+                        default=64,
                         help="The length of the first protein of the pair.")
     # msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
-    parser.add_argument("-m", "--MSA_file", default="Standard_HKRR_dataset.fasta",
+    parser.add_argument("-m", "--MSA_file",
+                        default="Standard_HKRR_dataset.fasta",
                         help="Path to the multiple sequence alignment (MSA) in fasta format of the concatenated pairs.")
     # Species list
-    parser.add_argument("-s", "--species", default="SpeciesNumbering_Standard_HKRR_dataset.mat",
+    parser.add_argument("-s", "--species",
+                        default="SpeciesNumbering_Standard_HKRR_dataset.mat",
                         help="Species list, currently in matlab format.")
+    # Output folder
+    parser.add_argument("-o", "--output",
+                        default="Results",
+                        help="Path to the output folder.")
     # Verbosity
-    parser.add_argument("-v", "--verbosity", action="store_true", default=0,
+    parser.add_argument("-v", "--verbosity",
+                        action="store_true",
+                        default=0,
                         help="Increase output verbosity (prints variables and rounds).")
     # return parser.parse_args()
     return parser.parse_known_args()
