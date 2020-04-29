@@ -19,7 +19,7 @@ import argparse
 from pathlib import Path
 
 # setting
-np.set_printoptions(suppress=True)
+np.set_printoptions(suppress=True) # To suppress scientific notation when displayed, set suppress to True . By default, NumPy uses up to 8 digits of precision and will not suppress scientific notation.
 
 # from matlab data to df
 mat = spio.loadmat('SpeciesNumbering_Standard_HKRR_dataset.mat', squeeze_me=True)
@@ -33,12 +33,14 @@ def main(args=None):
     # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
 
     # Get the arguments
-    print(args)
     arguments, unknown_args = getArgs(args)
-    print('Arguments: ' + str(arguments))
     if arguments.verbosity:
-        print('Run with this arguments: ' + str(arguments))
-        print('Unknown arguments: ' + str(unknown_args))
+        print("Executed with this options: \n" + str(arguments)
+                                                .replace("Namespace(", " ")
+                                                .replace("=", " = ")
+                                                .replace(",", "\n"))
+        if unknown_args != []:
+            print('Unknown arguments: ' + str(unknown_args))
     Nincrement = arguments.Nincrement
     LengthA = arguments.Length_first_protein
 
@@ -59,8 +61,9 @@ def main(args=None):
 
     # Time stamp to add as file sufix.
     time_stamp = time.strftime("%y%m%d%H%M")
-    encoded_focus_alignment, encoded_focus_alignment_headers, L = readAlignment_and_NumberSpecies(msa_fasta_filename,
-                                                                                                  SpeciesNumbering_extr)
+
+    encoded_focus_alignment, encoded_focus_alignment_headers, L \
+        = readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr)
 
     # suppress species with one pair
     encoded_focus_alignment, encoded_focus_alignment_headers = SuppressSpeciesWithOnePair(encoded_focus_alignment,
@@ -137,8 +140,8 @@ def main(args=None):
         print("and : " + filename)
 
 
-def getArgs(
-        args=None):  # Added "args = None" to be able to pass arguments for testing (so it works also without command line arguments.
+def getArgs(args=None):  # "args = None" allows to pass arguments for testing
+                                    # (so it works also without command line arguments.
     parser = argparse.ArgumentParser(args)
     # Now the parameters:
     # Nincrement
@@ -146,15 +149,15 @@ def getArgs(
                         type=int,
                         default=6,
                         help="Number of pairs (with the highest confidence scores) to keep from the previous iteration (default = 6).")
+    # msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
+    parser.add_argument("-m", "--MSA_file",
+                        default="Standard_HKRR_dataset.fasta",
+                        help="Path to the multiple sequence alignment (MSA) in fasta format of the concatenated pairs.")
     # LengthA = 64
     parser.add_argument("-l", "--Length_first_protein",
                         type=int,
                         default=64,
                         help="The length of the first protein of the pair.")
-    # msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
-    parser.add_argument("-m", "--MSA_file",
-                        default="Standard_HKRR_dataset.fasta",
-                        help="Path to the multiple sequence alignment (MSA) in fasta format of the concatenated pairs.")
     # Species list
     parser.add_argument("-s", "--species",
                         default="SpeciesNumbering_Standard_HKRR_dataset.mat",
