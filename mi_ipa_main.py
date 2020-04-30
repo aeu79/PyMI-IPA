@@ -144,11 +144,6 @@ def getArgs(args=None):  # "args = None" allows to pass arguments for testing
                                     # (so it works also without command line arguments.
     parser = argparse.ArgumentParser(args)
     # Now the parameters:
-    # Nincrement
-    parser.add_argument("-n", "--Nincrement",
-                        type=int,
-                        default=6,
-                        help="Number of pairs (with the highest confidence scores) to keep from the previous iteration (default = 6).")
     # msa_fasta_filename = 'Standard_HKRR_dataset.fasta'
     parser.add_argument("-m", "--MSA_file",
                         default="Standard_HKRR_dataset.fasta",
@@ -162,6 +157,11 @@ def getArgs(args=None):  # "args = None" allows to pass arguments for testing
     parser.add_argument("-s", "--species",
                         default="SpeciesNumbering_Standard_HKRR_dataset.mat",
                         help="Species list, currently in matlab format.")
+    # Nincrement
+    parser.add_argument("-n", "--Nincrement",
+                        type=int,
+                        default=6,
+                        help="Number of pairs (with the highest confidence scores) to keep from the previous iteration (default = 6).")
     # Output folder
     parser.add_argument("-o", "--output",
                         default="Results",
