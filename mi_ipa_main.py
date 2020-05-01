@@ -26,38 +26,41 @@ mat = spio.loadmat('SpeciesNumbering_Standard_HKRR_dataset.mat', squeeze_me=True
 col1 = list(range(len(mat['SpeciesNumbering_extr'])))
 col2 = [x[1] for x in mat['SpeciesNumbering_extr']]
 SpeciesNumbering_extr = pd.DataFrame([*zip(col1, col2)])
-
+print(type(SpeciesNumbering_extr))
 
 def main(args=None):
     # read sequences, adding species number in L+1 and sequence number in L+2
     # L is the full length of concatenated sequences, without supplementary indicators such as species and initial index.
 
     # Get the arguments
+    # Handle the command line arguments
+    #    # Get them
     arguments, unknown_args = getArgs(args)
+    #    # Show them if verbosity was chosen
     if arguments.verbosity:
-        print("Executed with this options: \n" + str(arguments)
+        print("__________________________________________________________________________________\n")
+        print("Executed with these parameters: \n" + \
+              "------------------------------"
+                            + "\n" + str(arguments)
                                                 .replace("Namespace(", " ")
                                                 .replace("=", " = ")
-                                                .replace(",", "\n"))
+                                                .replace(",", "\n")
+                                                .replace(")", ""))
         if unknown_args != []:
             print('Unknown arguments: ' + str(unknown_args))
+        print("__________________________________________________________________________________")
     Nincrement = arguments.Nincrement
     LengthA = arguments.Length_first_protein
 
-    # Create output folder (if it doesn't exist)
+    #    # Create output folder (if it doesn't exist)
     output_path = arguments.output
     if not output_path.endswith("/"):
         output_path += "/"
     Path(output_path).mkdir(parents=True, exist_ok=True)
-
+    #    # Save the remaining ones
     msa_fasta_filename = arguments.MSA_file
     species = arguments.species
-    if arguments.verbosity:
-        print("The MSA:                 " + msa_fasta_filename)
-        print("The species list:        " + species)
-        print("Length (aa) first prot.: " + str(
-            LengthA))  # TODO: check in the lenght takes into account gaps (it should be column instead of aa)
-        print("Nincrement:              " + str(Nincrement))
+    #    #
 
     # Time stamp to add as file sufix.
     time_stamp = time.strftime("%y%m%d%H%M")
@@ -76,8 +79,8 @@ def main(args=None):
     # number of runs(last one -> all sequences are in the training set)
     Nrounds = math.ceil(encoded_focus_alignment.shape[0] / Nincrement + 1)
     if arguments.verbosity:
-        print("Number of sequences: " + str(N))
-        print("Number of rounds: " + str(Nrounds))
+        print("\nThe MSA, " + msa_fasta_filename + ", contains " + str(N) + " sequences. \
+        \nWith and Nincrement of " + str(Nincrement) + ", a total of " + str(Nrounds) + " rounds will be needed.\n")
 
     # start from random within-species pairings: scramble the pairings for this.
     encoded_training_alignment = ScrambleSeqs(encoded_focus_alignment, LengthA, table_count_species)
@@ -133,11 +136,11 @@ def main(args=None):
     filename = output_path + 'TP_data_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
     np.savetxt(filename, Output, fmt=['%d', '%1.3f', '%d', '%d', '%d', '%d'], delimiter='\t')
     if arguments.verbosity:
-        print("Saved: " + filename)
+        print("\nThe work is complete and the results were saved as:\n" + filename)
     filename = output_path + 'Resf_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
     np.savetxt(filename, Results, fmt=['%d', '%d', '%d', '%1.3f', '%1.3f'], delimiter='\t')
     if arguments.verbosity:
-        print("and : " + filename)
+        print("\t" + filename)
 
 
 def getArgs(args=None):  # "args = None" allows to pass arguments for testing
