@@ -136,7 +136,7 @@ def main(args=None):
     filename = output_path + 'TP_data_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
     np.savetxt(filename, Output, fmt=['%d', '%1.3f', '%d', '%d', '%d', '%d'], delimiter='\t')
     if arguments.verbosity:
-        print("\nThe work is complete and the results were saved as:\n" + filename)
+        print("\nThe work was completed and the results were saved as:\n" + "\t" + filename)
     filename = output_path + 'Resf_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
     np.savetxt(filename, Results, fmt=['%d', '%d', '%d', '%1.3f', '%1.3f'], delimiter='\t')
     if arguments.verbosity:
