@@ -26,7 +26,7 @@ mat = spio.loadmat('SpeciesNumbering_Standard_HKRR_dataset.mat', squeeze_me=True
 col1 = list(range(len(mat['SpeciesNumbering_extr'])))
 col2 = [x[1] for x in mat['SpeciesNumbering_extr']]
 SpeciesNumbering_extr = pd.DataFrame([*zip(col1, col2)])
-print(type(SpeciesNumbering_extr))
+
 
 def main(args=None):
     # read sequences, adding species number in L+1 and sequence number in L+2
@@ -362,29 +362,13 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     pre_tol = 0
     cur_tol = 0
 
-    ## index coombination of two individual proteins: a[0,63] b[64,175]
-    ## residue_in_first,residue_in_second appear in pairs: [0,64],[0,65],[0,66]...[63,175]
-    index_aa_list = []
-    residues_in_first = list(range(LengthA))
-    residues_in_second = list(range(LengthA, L))
-
-    # for residue_in_first, residue_in_second in list(product(residues_in_first, residues_in_second):
-    for residue_in_first, residue_in_second in list(product(list(range(LengthA)), list(range(LengthA, L)))):
-        index_aa_list.append([residue_in_first, residue_in_second])
-
-    # TODO: indlst is generated every single time (4407 times, actually, for the small dataset of the paper). Check if changes and how in each iteration. (trying to remove it)
-    # prueba = []
-    # prueba = np.array(np.meshgrid(list(range(LengthA)), list(range(LengthA, L))))
-    ## I'll try to precalculate it
-
-    for i in range(table_count_species.shape[
-                       0]):  # TODO: whatchout, it seems that uses ol species so it should check what happens with the reduced dataset for testing
+    for i in range(table_count_species.shape[0]): # TODO: whatchout, it seems that uses ol species so it should check what happens with the reduced dataset for testing
         test_seqs = encoded_focus_alignment[table_count_species[i, 1]:table_count_species[i, 2] + 1, :]
         Nseqs = table_count_species[i, 2] - table_count_species[i, 1] + 1
         species_id = table_count_species[i, 0]
 
         # now compute the PMI-based pairing score of all the HK-RR pairs within the species corresponding to i
-        Pairing_scores = Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, index_aa_list)
+        Pairing_scores = Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L)
 
         if Nseqs == 1:
             assignment = 1
@@ -435,7 +419,7 @@ def Predict_pairs(encoded_focus_alignment, PMIs, LengthA, table_count_species):
     return Results.T
 
 
-def Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, indlst):
+def Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L):
     '''
     calculate PMI-based pairing scores between all pairs of HKs and RRs in test_seqs
     Line: HK; Col: RR.
@@ -449,21 +433,15 @@ def Compute_pairing_scores(test_seqs, Nseqs, PMIs, LengthA, L, indlst):
 
     Pairing_scores = np.zeros((Nseqs, Nseqs))
 
-    # ## index coombination of two individual proteins: a[0,63] b[64,175]
-    # ## k,l appear in pairs: [0,64],[0,65],[0,66]...[63,175]
-    # indlst = []
-    #
-    # for k, l in list(product(list(range(LengthA)), list(range(LengthA, L)))):
-    #     indlst.append([k, l])
-    # # TODO: indlst is generated every single time (4407 times, actually, for the small dataset of the paper). Check if changes and how in each iteration. (trying to remove it)
-    # # prueba = []
-    # # prueba = np.array(np.meshgrid(list(range(LengthA)), list(range(LengthA, L))))
+    ## index coombination of two individual proteins: a[0,63] b[64,175]
+    ## k,l appear in pairs: [0,64],[0,65],[0,66]...[63,175]
+    indlst = []
+    for k, l in list(product(list(range(LengthA)), list(range(LengthA, L)))):
+        indlst.append([k, l])
 
     ## length of a_lst/b_lst : 64*112=7168
     a_lst = [x[0] for x in indlst]  # element in a_lst: position in protein A (from 0 to 63)
     b_lst = [x[1] for x in indlst]  # element in b_lst: position in protein B (from 64 to 175)
-
-    # assert index_aa_list == indlst # Never failed, so it's the same.
 
     ## fill in Pairing_scores matrix
     for index in np.ndindex(Pairing_scores.shape):
