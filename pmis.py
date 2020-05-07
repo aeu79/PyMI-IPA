@@ -104,11 +104,18 @@ def Get_PMIs(Pij, Pi, alignment_width, q):
 
     ## my code
     C_ind = np.triu_indices(alignment_width, 0)
+    np.seterr(divide='ignore') # Avoid warning log(0)
     for m in range(len(C_ind[0])):
         i, j = C_ind[0][m], C_ind[1][m]
         Pi_mat = np.dot(Pi[i, :][1:, None], Pi[j, :][None, 1:])
         C[i, j, 1:, 1:] = np.log(Pij[i, j, 1:, 1:] / Pi_mat)
+        # Alternative to avoid the devide by zero warning: TODO
+        # resulti = np.where(Pij[i, j, 1:, 1:] / Pi_mat > 0.0000000001, Pij[i, j, 1:, 1:] / Pi_mat, -math.inf)
+        # C[i, j, 1:, 1:] = np.log(resulti, out=resulti, where=resulti > 0)
         C[j, i, 1:, 1:] = np.log(Pij[j, i, 1:, 1:] / Pi_mat.T)
+        #resultj = np.where(Pij[j, i, 1:, 1:] / Pi_mat.T > 0.0000000001, Pij[j, i, 1:, 1:] / Pi_mat.T, -math.inf)
+        #C[j, i, 1:, 1:] = np.log(resultj, out=resultj, where=resultj > 0)
+    np.seterr(divide='warn') # warnings back on
 
     # mask for Pij=0
     C[Pij == 0] = -math.inf
