@@ -139,13 +139,13 @@ def main(args=None):
                comments="",
                header="I\tNseqs\tMeff\tTP\tFP\ttTP\ttFP",
                footer="\n"
-                      "I: iteration nº\n"
+                      "I: iteration nº.\n"
                       "Nseqs: number of sequences used as training set.\n"
                       "Meff: effective number of sequences in concatenated alignment used as training set.\n"
-                      "TP: TP pairs\n"
-                      "FP: FP pairs\n"
-                      "tTP: TP pairs in concatenated alignment used as training set\n"
-                      "tFP: FP pairs in concatenated alignment used as training set")
+                      "TP: TP pairs.\n"
+                      "FP: FP pairs.\n"
+                      "tTP: TP pairs in concatenated alignment used as training set.\n"
+                      "tFP: FP pairs in concatenated alignment used as training set.")
     if arguments.verbosity:
         print("\nThe work was completed and the results were saved as:\n" + "\t" + filename)
     filename = output_path + 'Resf_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
