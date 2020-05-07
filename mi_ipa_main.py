@@ -63,7 +63,7 @@ def main(args=None):
     #    #
 
     # Time stamp to add as file sufix.
-    time_stamp = time.strftime("%y%m%d%H%M")
+    time_stamp = time.strftime("%m%d%H%M")
 
     encoded_focus_alignment, encoded_focus_alignment_headers, L \
         = readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr)
@@ -163,7 +163,7 @@ def getArgs(args=None):  # "args = None" allows to pass arguments for testing
     # Nincrement
     parser.add_argument("-n", "--Nincrement",
                         type=int,
-                        default=6,
+                        default=200, # TODO: Remember to put back the 6
                         help="Number of pairs (with the highest confidence scores) to keep from the previous iteration (default = 6).")
     # Output folder
     parser.add_argument("-o", "--output",
