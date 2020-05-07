@@ -136,7 +136,7 @@ def main(args=None):
 
     filename = output_path + 'TP_data_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
     np.savetxt(filename, Output, fmt=['%d', '%d', '%d', '%d', '%d', '%d', '%d'], delimiter='\t',
-               comments="",
+               comments="", # Might be removed if we need to read the output later. Default is "#" and will be in front of header and footer.
                header="I\tNseqs\tMeff\tTP\tFP\ttTP\ttFP",
                footer="\n"
                       "I: iteration nº.\n"
