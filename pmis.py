@@ -1,3 +1,9 @@
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)  # To avoid the: FutureWarning: Using a non-tuple sequence
+# for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be
+# interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+#  np.add.at(Pij_true[e, j, :, :], [e_col.tolist(), j_col.tolist()], W)
+
 import math
 from itertools import product
 
