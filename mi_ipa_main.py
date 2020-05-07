@@ -93,7 +93,7 @@ def main(args=None):
 
     # initialize
     NSeqs_new = 0
-    Output = np.zeros((Nrounds, 6))
+    Output = np.zeros((Nrounds, 7))
 
     # iterate
     for rounds in range(Nrounds):
@@ -110,8 +110,8 @@ def main(args=None):
                 NSeqs_new = Results.shape[0]  # for the last round, all paired sequences will be in the training set
 
             # save to Output the number of TP or FP in the training set
-            Output[rounds, 4] = np.count_nonzero(Results[:NSeqs_new, 1] == Results[:NSeqs_new, 2])
-            Output[rounds, 5] = np.count_nonzero(Results[:NSeqs_new, 1] != Results[:NSeqs_new, 2])
+            Output[rounds, 5] = np.count_nonzero(Results[:NSeqs_new, 1] == Results[:NSeqs_new, 2])
+            Output[rounds, 6] = np.count_nonzero(Results[:NSeqs_new, 1] != Results[:NSeqs_new, 2])
 
             # construct new training set
             newseqs = np.zeros((NSeqs_new, L))
@@ -128,13 +128,24 @@ def main(args=None):
 
         # compute pairings and gap scores for all pairs
         Results = Predict_pairs(encoded_focus_alignment, -PMIs, LengthA, table_count_species)
-        Output[rounds, 0] = NSeqs_new
-        Output[rounds, 1] = Meff
-        Output[rounds, 2] = np.count_nonzero(Results[:, 1] == Results[:, 2])
-        Output[rounds, 3] = np.count_nonzero(Results[:, 1] != Results[:, 2])
+        Output[rounds, 0] = rounds + 1
+        Output[rounds, 1] = NSeqs_new
+        Output[rounds, 2] = Meff
+        Output[rounds, 3] = np.count_nonzero(Results[:, 1] == Results[:, 2])
+        Output[rounds, 4] = np.count_nonzero(Results[:, 1] != Results[:, 2])
 
     filename = output_path + 'TP_data_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
-    np.savetxt(filename, Output, fmt=['%d', '%1.3f', '%d', '%d', '%d', '%d'], delimiter='\t')
+    np.savetxt(filename, Output, fmt=['%d', '%d', '%d', '%d', '%d', '%d', '%d'], delimiter='\t',
+               comments="",
+               header="I\tNseqs\tMeff\tTP\tFP\ttTP\ttFP",
+               footer="\n"
+                      "I: iteration nº\n"
+                      "Nseqs: number of sequences used as training set.\n"
+                      "Meff: effective number of sequences in concatenated alignment used as training set.\n"
+                      "TP: TP pairs\n"
+                      "FP: FP pairs\n"
+                      "tTP: TP pairs in concatenated alignment used as training set\n"
+                      "tFP: FP pairs in concatenated alignment used as training set")
     if arguments.verbosity:
         print("\nThe work was completed and the results were saved as:\n" + "\t" + filename)
     filename = output_path + 'Resf_Ninc' + str(Nincrement) + '_' + str(time_stamp) + '.txt'
