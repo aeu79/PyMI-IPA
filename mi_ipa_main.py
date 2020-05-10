@@ -21,12 +21,6 @@ from pathlib import Path
 # setting
 np.set_printoptions(suppress=True) # To suppress scientific notation when displayed, set suppress to True . By default, NumPy uses up to 8 digits of precision and will not suppress scientific notation.
 
-# from matlab data to df
-mat = spio.loadmat('SpeciesNumbering_Standard_HKRR_dataset.mat', squeeze_me=True)
-col1 = list(range(len(mat['SpeciesNumbering_extr'])))
-col2 = [x[1] for x in mat['SpeciesNumbering_extr']]
-SpeciesNumbering_extr = pd.DataFrame([*zip(col1, col2)])
-
 
 def main(args=None):
     # read sequences, adding species number in L+1 and sequence number in L+2
@@ -36,6 +30,7 @@ def main(args=None):
     # Handle the command line arguments
     #    # Get them
     arguments, unknown_args = getArgs(args)
+    arguments.species
     #    # Show them if verbosity was chosen
     if arguments.verbosity:
         print("__________________________________________________________________________________\n")
@@ -52,6 +47,7 @@ def main(args=None):
     Nincrement = arguments.Nincrement
     LengthA = arguments.Length_first_protein
 
+
     #    # Create output folder (if it doesn't exist)
     output_path = arguments.output
     if not output_path.endswith("/"):
@@ -59,12 +55,14 @@ def main(args=None):
     Path(output_path).mkdir(parents=True, exist_ok=True)
     #    # Save the remaining ones
     msa_fasta_filename = arguments.MSA_file
-    species = arguments.species
-    #    #
+    species_list = arguments.species
 
     # Time stamp to add as file sufix.
     time_stamp = time.strftime("%m%d%H%M")
 
+    # Start handling data.
+    # Sequences and species.
+    SpeciesNumbering_extr = pd.read_csv(species_list, header=None, delimiter=',') # TODO: working now (now working)
     encoded_focus_alignment, encoded_focus_alignment_headers, L \
         = readAlignment_and_NumberSpecies(msa_fasta_filename, SpeciesNumbering_extr)
 
@@ -169,8 +167,8 @@ def getArgs(args=None):  # "args = None" allows to pass arguments for testing
                         help="The length of the first protein of the pair.")
     # Species list
     parser.add_argument("-s", "--species",
-                        default="SpeciesNumbering_Standard_HKRR_dataset.mat",
-                        help="Species list, currently in matlab format.")
+                        default="testing/SpeciesNumbering_Standard_HKRR_dataset.csv",
+                        help="Species list (unique values, every species appears only once).")
     # Nincrement
     parser.add_argument("-n", "--Nincrement",
                         type=int,
@@ -251,8 +249,6 @@ def count_species(encoded_focus_alignment):
     L = alignment_width - 2
 
     table_count_species = np.zeros((N, 3))
-    # if arguments.verbosity: # TOODO: fix this. Use a global variable of better return the shape and use it in main
-    #     print("Shape of table_count_species: " + str(table_count_species.shape))
     species_id = encoded_focus_alignment[1, L]
     iini = 1
     count = -1

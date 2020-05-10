@@ -1,0 +1,1 @@
+-v -m /home/agu/Desktop/9deMayo/MI_IPA/Standard_HKRR_dataset_575.fasta -l 64 -n 250 -s Species.csv -o borrame/
