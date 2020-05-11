@@ -24,7 +24,7 @@ This repository contains a Python version of the Matlab MI-IPA implementation ([
 <!--te-->
 
 ---
-## What we know so far
+## What we know so far (matlab version)
 ### Input
 #### Standard_HKRR_dataset.fasta
 MSA in fasta format (5109 random pairs). First sequence is the reference, last a dummy sequence.
@@ -171,12 +171,12 @@ git push --set-upstream origin my_new_branch
 --- 
 ### Dependencies
 * numpy
-* scipy
+* ~~scipy~~
 * biopython
 * pandas
 * munkres  
 
 Install with:
 ```bash
-pip3 install numpy scipy biopython pandas munkres
+pip3 install numpy biopython pandas munkres
 ```
