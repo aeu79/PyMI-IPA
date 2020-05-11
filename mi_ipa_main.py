@@ -5,9 +5,7 @@ from itertools import product
 # https://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
 import numpy as np
 import pandas as pd  # TODO: only used to read the CSV. Read it directly and remove dependency.
-import scipy.io as spio
-# TODO: Used only to import the species numbering in .mat format and extract unique species.
-# TODO: Use csv and remove it (scipy 26MB)
+
 # TODO: Add a way to make several replicates
 # TODO: Maybe delete at the end the initial scrambling (not much sense to keep it)
 
