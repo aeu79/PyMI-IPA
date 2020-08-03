@@ -170,13 +170,12 @@ git push --set-upstream origin my_new_branch
 ```
 --- 
 ### Dependencies
-* numpy
-* ~~scipy~~
-* biopython
 * pandas
+* biopython
+* scipy
 * munkres  
 
 Install with:
 ```bash
-pip3 install numpy biopython pandas munkres
+pip3 install pandas biopython scipy munkres
 ```
